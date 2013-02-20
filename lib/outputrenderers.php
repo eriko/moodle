@@ -580,7 +580,7 @@ class core_renderer extends renderer_base {
             } else {
                 $loggedinas = $realuserinfo.get_string('loggedinas', 'moodle', $username);
                 if ($withlinks) {
-                    $loggedinas .= " (<a href=\"$CFG->wwwroot/login/logout.php?sesskey=".sesskey()."\">".get_string('logout').'</a>)';
+                    $loggedinas .= " (<a href=\"$CFG->wwwroot/login/logout.php?sesskey=".sesskey()."\" rel=\"nofollow\">".get_string('logout').'</a>)';
                 }
             }
         } else {

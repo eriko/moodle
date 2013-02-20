@@ -342,7 +342,7 @@ class theme_mymobile_core_renderer extends core_renderer {
                     $rolename = ': '.format_string($role->name);
                 }
             } else {
-                $loggedinas = $realuserinfo.$username.'     <a id="mypower" data-inline="true" data-role="button" data-icon="mypower" data-ajax="false" class="ui-btn-right mypower" href="'.$CFG->wwwroot.'/login/logout.php?sesskey='.sesskey().'\">'.get_string('logout').'</a>';
+                $loggedinas = $realuserinfo.$username.'     <a id="mypower" data-inline="true" data-role="button" data-icon="mypower" data-ajax="false" class="ui-btn-right mypower" href="'.$CFG->wwwroot.'/login/logout.php?sesskey='.sesskey().'\ rel=\"nofollow\">"'.get_string('logout').'</a>';
             }
         } else {
             $loggedinas = '<a data-role="button" data-icon="alert" class="ui-btn-right nolog" href="'.$loginurl.'" data-ajax="false">'.get_string('login').'</a>';
