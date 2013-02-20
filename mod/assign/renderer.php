@@ -24,9 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-/** Include locallib.php */
 require_once($CFG->dirroot . '/mod/assign/locallib.php');
-
 
 /**
  * A custom renderer class that extends the plugin_renderer_base and is used by the assign module.
@@ -38,7 +36,7 @@ require_once($CFG->dirroot . '/mod/assign/locallib.php');
 class mod_assign_renderer extends plugin_renderer_base {
 
     /**
-     * rendering assignment files
+     * Rendering assignment files
      *
      * @param context $context
      * @param int $userid
@@ -51,7 +49,7 @@ class mod_assign_renderer extends plugin_renderer_base {
     }
 
     /**
-     * rendering assignment files
+     * Rendering assignment files
      *
      * @param assign_files $tree
      * @return string
@@ -92,7 +90,8 @@ class mod_assign_renderer extends plugin_renderer_base {
      * @return string
      */
     public function render_assign_quickgrading_result(assign_quickgrading_result $result) {
-        $url = new moodle_url('/mod/assign/view.php', array('id' => $result->coursemoduleid, 'action'=>'grading'));
+        $urlparams = array('id' => $result->coursemoduleid, 'action'=>'grading');
+        $url = new moodle_url('/mod/assign/view.php', $urlparams);
 
         $o = '';
         $o .= $this->output->heading(get_string('quickgradingresult', 'assign'), 4);
@@ -136,10 +135,9 @@ class mod_assign_renderer extends plugin_renderer_base {
         } else {
             $o .= $this->output->user_picture($summary->user);
             $o .= $this->output->spacer(array('width'=>30));
-            $o .= $this->output->action_link(new moodle_url('/user/view.php',
-                                                            array('id' => $summary->user->id,
-                                                                  'course'=>$summary->courseid)),
-                                                                  fullname($summary->user, $summary->viewfullnames));
+            $urlparams = array('id' => $summary->user->id, 'course'=>$summary->courseid);
+            $url = new moodle_url('/user/view.php', $urlparams);
+            $o .= $this->output->action_link($url, fullname($summary->user, $summary->viewfullnames));
         }
         $o .= $this->output->box_end();
         $o .= $this->output->container_end();
@@ -162,7 +160,7 @@ class mod_assign_renderer extends plugin_renderer_base {
 
         $cancelurl = new moodle_url('/mod/assign/view.php', array('id' => $page->coursemoduleid));
         if (count($page->notifications)) {
-            // At least one of the submission plugins is not ready for submission
+            // At least one of the submission plugins is not ready for submission.
 
             $o .= $this->output->heading(get_string('submissionnotready', 'assign'), 4);
 
@@ -172,17 +170,16 @@ class mod_assign_renderer extends plugin_renderer_base {
 
             $o .= $this->output->continue_button($cancelurl);
         } else {
-            // All submission plugins ready - show the confirmation form (may contain submission statement)
+            // All submission plugins ready - show the confirmation form.
             $o .= $this->moodleform($page->confirmform);
         }
         $o .= $this->output->container_end();
-
 
         return $o;
     }
 
     /**
-     * Page is done - render the footer
+     * Page is done - render the footer.
      *
      * @return void
      */
@@ -191,7 +188,7 @@ class mod_assign_renderer extends plugin_renderer_base {
     }
 
     /**
-     * render the header
+     * Render the header.
      *
      * @param assign_header $header
      * @return string
@@ -210,7 +207,8 @@ class mod_assign_renderer extends plugin_renderer_base {
         if ($header->preface) {
             $o .= $header->preface;
         }
-        $o .= $this->output->heading(format_string($header->assign->name,false, array('context' => $header->context)));
+        $heading = format_string($header->assign->name, false, array('context' => $header->context));
+        $o .= $this->output->heading($heading);
 
         if ($header->showintro) {
             $o .= $this->output->box_start('generalbox boxaligncenter', 'intro');
@@ -222,20 +220,20 @@ class mod_assign_renderer extends plugin_renderer_base {
     }
 
     /**
-     * render a table containing the current status of the grading process
+     * Render a table containing the current status of the grading process.
      *
      * @param assign_grading_summary $summary
      * @return string
      */
     public function render_assign_grading_summary(assign_grading_summary $summary) {
-        // create a table for the data
+        // Create a table for the data.
         $o = '';
         $o .= $this->output->container_start('gradingsummary');
         $o .= $this->output->heading(get_string('gradingsummary', 'assign'), 3);
         $o .= $this->output->box_start('boxaligncenter gradingsummarytable');
         $t = new html_table();
 
-        // status
+        // Status.
         if ($summary->teamsubmission) {
             $this->add_table_row_tuple($t, get_string('numberofteams', 'assign'),
                                        $summary->participantcount);
@@ -244,29 +242,30 @@ class mod_assign_renderer extends plugin_renderer_base {
                                        $summary->participantcount);
         }
 
-        // drafts
+        // Drafts.
         if ($summary->submissiondraftsenabled) {
             $this->add_table_row_tuple($t, get_string('numberofdraftsubmissions', 'assign'),
                                        $summary->submissiondraftscount);
-       }
+        }
 
-        // submitted for grading
+        // Submitted for grading.
         if ($summary->submissionsenabled) {
             $this->add_table_row_tuple($t, get_string('numberofsubmittedassignments', 'assign'),
                                        $summary->submissionssubmittedcount);
-            $this->add_table_row_tuple($t, get_string('numberofsubmissionsneedgrading', 'assign'),
-                                       $summary->submissionsneedgradingcount);
+            if (!$summary->teamsubmission) {
+                $this->add_table_row_tuple($t, get_string('numberofsubmissionsneedgrading', 'assign'),
+                                           $summary->submissionsneedgradingcount);
+            }
         }
 
         $time = time();
         if ($summary->duedate) {
-            // due date
-            // submitted for grading
+            // Due date.
             $duedate = $summary->duedate;
             $this->add_table_row_tuple($t, get_string('duedate', 'assign'),
                                        userdate($duedate));
 
-            // time remaining
+            // Time remaining.
             $due = '';
             if ($duedate - $time <= 0) {
                 $due = get_string('assignmentisdue', 'assign');
@@ -289,26 +288,25 @@ class mod_assign_renderer extends plugin_renderer_base {
 
         }
 
-        // all done - write the table
+        // All done - write the table.
         $o .= html_writer::table($t);
         $o .= $this->output->box_end();
 
-        // link to the grading page
+        // Link to the grading page.
         $o .= $this->output->container_start('submissionlinks');
-        $o .= $this->output->action_link(new moodle_url('/mod/assign/view.php',
-                                                          array('id' => $summary->coursemoduleid,
-                                                                'action'=>'grading')),
-                                                          get_string('viewgrading', 'assign'));
+        $urlparams = array('id' => $summary->coursemoduleid, 'action'=>'grading');
+        $url = new moodle_url('/mod/assign/view.php', $urlparams);
+        $o .= $this->output->action_link($url, get_string('viewgrading', 'assign'));
         $o .= $this->output->container_end();
 
-        // close the container and insert a spacer
+        // Close the container and insert a spacer.
         $o .= $this->output->container_end();
 
         return $o;
     }
 
     /**
-     * render a table containing all the current grades and feedback
+     * Render a table containing all the current grades and feedback.
      *
      * @param assign_feedback_status $status
      * @return string
@@ -322,22 +320,30 @@ class mod_assign_renderer extends plugin_renderer_base {
         $o .= $this->output->box_start('boxaligncenter feedbacktable');
         $t = new html_table();
 
-        $row = new html_table_row();
-        $cell1 = new html_table_cell(get_string('grade'));
-        $cell2 = new html_table_cell($status->gradefordisplay);
-        $row->cells = array($cell1, $cell2);
-        $t->data[] = $row;
+        // Grade.
+        if (isset($status->gradefordisplay)) {
+            $row = new html_table_row();
+            $cell1 = new html_table_cell(get_string('grade'));
+            $cell2 = new html_table_cell($status->gradefordisplay);
+            $row->cells = array($cell1, $cell2);
+            $t->data[] = $row;
 
-        $row = new html_table_row();
-        $cell1 = new html_table_cell(get_string('gradedon', 'assign'));
-        $cell2 = new html_table_cell(userdate($status->gradeddate));
-        $row->cells = array($cell1, $cell2);
-        $t->data[] = $row;
+            // Grade date.
+            $row = new html_table_row();
+            $cell1 = new html_table_cell(get_string('gradedon', 'assign'));
+            $cell2 = new html_table_cell(userdate($status->gradeddate));
+            $row->cells = array($cell1, $cell2);
+            $t->data[] = $row;
+        }
 
         if ($status->grader) {
+            // Grader.
             $row = new html_table_row();
             $cell1 = new html_table_cell(get_string('gradedby', 'assign'));
-            $cell2 = new html_table_cell($this->output->user_picture($status->grader) . $this->output->spacer(array('width'=>30)) . fullname($status->grader));
+            $userdescription = $this->output->user_picture($status->grader) .
+                               $this->output->spacer(array('width'=>30)) .
+                               fullname($status->grader);
+            $cell2 = new html_table_cell($userdescription);
             $row->cells = array($cell1, $cell2);
             $t->data[] = $row;
         }
@@ -351,13 +357,18 @@ class mod_assign_renderer extends plugin_renderer_base {
 
                 $row = new html_table_row();
                 $cell1 = new html_table_cell($plugin->get_name());
-                $pluginfeedback = new assign_feedback_plugin_feedback($plugin, $status->grade, assign_feedback_plugin_feedback::SUMMARY, $status->coursemoduleid, $status->returnaction, $status->returnparams);
+                $displaymode = assign_feedback_plugin_feedback::SUMMARY;
+                $pluginfeedback = new assign_feedback_plugin_feedback($plugin,
+                                                                      $status->grade,
+                                                                      $displaymode,
+                                                                      $status->coursemoduleid,
+                                                                      $status->returnaction,
+                                                                      $status->returnparams);
                 $cell2 = new html_table_cell($this->render($pluginfeedback));
                 $row->cells = array($cell1, $cell2);
                 $t->data[] = $row;
             }
         }
-
 
         $o .= html_writer::table($t);
         $o .= $this->output->box_end();
@@ -367,7 +378,7 @@ class mod_assign_renderer extends plugin_renderer_base {
     }
 
     /**
-     * render a table containing the current status of the submission
+     * Render a table containing the current status of the submission.
      *
      * @param assign_submission_status $status
      * @return string
@@ -382,9 +393,11 @@ class mod_assign_renderer extends plugin_renderer_base {
                 $time <= $status->allowsubmissionsfromdate) {
             $o .= $this->output->box_start('generalbox boxaligncenter submissionsalloweddates');
             if ($status->alwaysshowdescription) {
-                $o .= get_string('allowsubmissionsfromdatesummary', 'assign', userdate($status->allowsubmissionsfromdate));
+                $date = userdate($status->allowsubmissionsfromdate);
+                $o .= get_string('allowsubmissionsfromdatesummary', 'assign', $date);
             } else {
-                $o .= get_string('allowsubmissionsanddescriptionfromdatesummary', 'assign', userdate($status->allowsubmissionsfromdate));
+                $date = userdate($status->allowsubmissionsfromdate);
+                $o .= get_string('allowsubmissionsanddescriptionfromdatesummary', 'assign', $date);
             }
             $o .= $this->output->box_end();
         }
@@ -409,7 +422,8 @@ class mod_assign_renderer extends plugin_renderer_base {
         $cell1 = new html_table_cell(get_string('submissionstatus', 'assign'));
         if (!$status->teamsubmissionenabled) {
             if ($status->submission) {
-                $cell2 = new html_table_cell(get_string('submissionstatus_' . $status->submission->status, 'assign'));
+                $statusstr = get_string('submissionstatus_' . $status->submission->status, 'assign');
+                $cell2 = new html_table_cell($statusstr);
                 $cell2->attributes = array('class'=>'submissionstatus' . $status->submission->status);
             } else {
                 if (!$status->submissionsenabled) {
@@ -424,7 +438,8 @@ class mod_assign_renderer extends plugin_renderer_base {
             $row = new html_table_row();
             $cell1 = new html_table_cell(get_string('submissionstatus', 'assign'));
             if ($status->teamsubmission) {
-                $submissionsummary = get_string('submissionstatus_' . $status->teamsubmission->status, 'assign');
+                $teamstatus = $status->teamsubmission->status;
+                $submissionsummary = get_string('submissionstatus_' . $teamstatus, 'assign');
                 $groupid = 0;
                 if ($status->submissiongroup) {
                     $groupid = $status->submissiongroup->id;
@@ -433,16 +448,19 @@ class mod_assign_renderer extends plugin_renderer_base {
                 $members = $status->submissiongroupmemberswhoneedtosubmit;
                 $userslist = array();
                 foreach ($members as $member) {
-                    $url = new moodle_url('/user/view.php', array('id' => $member->id, 'course'=>$status->courseid));
+                    $urlparams = array('id' => $member->id, 'course'=>$status->courseid);
+                    $url = new moodle_url('/user/view.php', $urlparams);
                     if ($status->view == assign_submission_status::GRADER_VIEW && $status->blindmarking) {
                         $userslist[] = $member->alias;
                     } else {
-                        $userslist[] = $this->output->action_link($url, fullname($member, $status->canviewfullnames));
+                        $fullname = fullname($member, $status->canviewfullnames);
+                        $userslist[] = $this->output->action_link($url, $fullname);
                     }
                 }
                 if (count($userslist) > 0) {
                     $userstr = join(', ', $userslist);
-                    $submissionsummary .= $this->output->container(get_string('userswhoneedtosubmit', 'assign', $userstr));
+                    $formatteduserstr = get_string('userswhoneedtosubmit', 'assign', $userstr);
+                    $submissionsummary .= $this->output->container($formatteduserstr);
                 }
 
                 $cell2 = new html_table_cell($submissionsummary);
@@ -459,7 +477,7 @@ class mod_assign_renderer extends plugin_renderer_base {
             $t->data[] = $row;
         }
 
-        // status
+        // Is locked?
         if ($status->locked) {
             $row = new html_table_row();
             $cell1 = new html_table_cell();
@@ -469,7 +487,7 @@ class mod_assign_renderer extends plugin_renderer_base {
             $t->data[] = $row;
         }
 
-        // grading status
+        // Grading status.
         $row = new html_table_row();
         $cell1 = new html_table_cell(get_string('gradingstatus', 'assign'));
 
@@ -483,9 +501,9 @@ class mod_assign_renderer extends plugin_renderer_base {
         $row->cells = array($cell1, $cell2);
         $t->data[] = $row;
 
-
         $duedate = $status->duedate;
         if ($duedate > 0) {
+            // Due date.
             $row = new html_table_row();
             $cell1 = new html_table_cell(get_string('duedate', 'assign'));
             $cell2 = new html_table_cell(userdate($duedate));
@@ -494,6 +512,7 @@ class mod_assign_renderer extends plugin_renderer_base {
 
             if ($status->view == assign_submission_status::GRADER_VIEW) {
                 if ($status->cutoffdate) {
+                    // Cut off date.
                     $row = new html_table_row();
                     $cell1 = new html_table_cell(get_string('cutoffdate', 'assign'));
                     $cell2 = new html_table_cell(userdate($status->cutoffdate));
@@ -503,6 +522,7 @@ class mod_assign_renderer extends plugin_renderer_base {
             }
 
             if ($status->extensionduedate) {
+                // Extension date.
                 $row = new html_table_row();
                 $cell1 = new html_table_cell(get_string('extensionduedate', 'assign'));
                 $cell2 = new html_table_cell(userdate($status->extensionduedate));
@@ -515,19 +535,27 @@ class mod_assign_renderer extends plugin_renderer_base {
             $row = new html_table_row();
             $cell1 = new html_table_cell(get_string('timeremaining', 'assign'));
             if ($duedate - $time <= 0) {
-                if (!$status->submission || $status->submission->status != ASSIGN_SUBMISSION_STATUS_SUBMITTED) {
+                if (!$status->submission ||
+                        $status->submission->status != ASSIGN_SUBMISSION_STATUS_SUBMITTED) {
                     if ($status->submissionsenabled) {
-                        $cell2 = new html_table_cell(get_string('overdue', 'assign', format_time($time - $duedate)));
+                        $overduestr = get_string('overdue', 'assign', format_time($time - $duedate));
+                        $cell2 = new html_table_cell($overduestr);
                         $cell2->attributes = array('class'=>'overdue');
                     } else {
                         $cell2 = new html_table_cell(get_string('duedatereached', 'assign'));
                     }
                 } else {
                     if ($status->submission->timemodified > $duedate) {
-                        $cell2 = new html_table_cell(get_string('submittedlate', 'assign', format_time($status->submission->timemodified - $duedate)));
+                        $latestr = get_string('submittedlate',
+                                              'assign',
+                                              format_time($status->submission->timemodified - $duedate));
+                        $cell2 = new html_table_cell($latestr);
                         $cell2->attributes = array('class'=>'latesubmission');
                     } else {
-                        $cell2 = new html_table_cell(get_string('submittedearly', 'assign', format_time($status->submission->timemodified - $duedate)));
+                        $earlystr = get_string('submittedearly',
+                                               'assign',
+                                               format_time($status->submission->timemodified - $duedate));
+                        $cell2 = new html_table_cell($earlystr);
                         $cell2->attributes = array('class'=>'earlysubmission');
                     }
                 }
@@ -541,7 +569,7 @@ class mod_assign_renderer extends plugin_renderer_base {
         // Show graders whether this submission is editable by students.
         if ($status->view == assign_submission_status::GRADER_VIEW) {
             $row = new html_table_row();
-            $cell1 = new html_table_cell(get_string('open', 'assign'));
+            $cell1 = new html_table_cell(get_string('editingstatus', 'assign'));
             if ($status->canedit) {
                 $cell2 = new html_table_cell(get_string('submissioneditable', 'assign'));
                 $cell2->attributes = array('class'=>'submissioneditable');
@@ -549,6 +577,8 @@ class mod_assign_renderer extends plugin_renderer_base {
                 $cell2 = new html_table_cell(get_string('submissionnoteditable', 'assign'));
                 $cell2->attributes = array('class'=>'submissionnoteditable');
             }
+            $row->cells = array($cell1, $cell2);
+            $t->data[] = $row;
         }
 
         // Grading criteria preview.
@@ -570,16 +600,18 @@ class mod_assign_renderer extends plugin_renderer_base {
             $t->data[] = $row;
 
             foreach ($status->submissionplugins as $plugin) {
+                $pluginshowsummary = !$plugin->is_empty($submission) || !$plugin->allow_submissions();
                 if ($plugin->is_enabled() &&
                     $plugin->is_visible() &&
                     $plugin->has_user_summary() &&
-                    !$plugin->is_empty($submission)) {
+                    $pluginshowsummary) {
 
                     $row = new html_table_row();
                     $cell1 = new html_table_cell($plugin->get_name());
+                    $displaymode = assign_submission_plugin_submission::SUMMARY;
                     $pluginsubmission = new assign_submission_plugin_submission($plugin,
                                                                                 $submission,
-                                                                                assign_submission_plugin_submission::SUMMARY,
+                                                                                $displaymode,
                                                                                 $status->coursemoduleid,
                                                                                 $status->returnaction,
                                                                                 $status->returnparams);
@@ -589,7 +621,6 @@ class mod_assign_renderer extends plugin_renderer_base {
                 }
             }
         }
-
 
         $o .= html_writer::table($t);
         $o .= $this->output->box_end();
@@ -623,7 +654,7 @@ class mod_assign_renderer extends plugin_renderer_base {
     }
 
     /**
-     * render a submission plugin submission
+     * Render a submission plugin submission
      *
      * @param assign_submission_plugin_submission $submissionplugin
      * @return string
@@ -632,25 +663,61 @@ class mod_assign_renderer extends plugin_renderer_base {
         $o = '';
 
         if ($submissionplugin->view == assign_submission_plugin_submission::SUMMARY) {
-            $icon = $this->output->pix_icon('t/preview', get_string('view' . substr($submissionplugin->plugin->get_subtype(), strlen('assign')), 'mod_assign'));
-            $link = '';
             $showviewlink = false;
-            $summary = $submissionplugin->plugin->view_summary($submissionplugin->submission, $showviewlink);
+            $summary = $submissionplugin->plugin->view_summary($submissionplugin->submission,
+                                                               $showviewlink);
+
+            $classsuffix = $submissionplugin->plugin->get_subtype() .
+                           '_' .
+                           $submissionplugin->plugin->get_type() .
+                           '_' .
+                           $submissionplugin->submission->id;
+
+            $o .= $this->output->box_start('boxaligncenter plugincontentsummary summary_' . $classsuffix);
+
+            $link = '';
             if ($showviewlink) {
-                $link = $this->output->action_link(
-                                new moodle_url('/mod/assign/view.php',
-                                               array('id' => $submissionplugin->coursemoduleid,
-                                                     'sid'=>$submissionplugin->submission->id,
-                                                     'plugin'=>$submissionplugin->plugin->get_type(),
-                                                     'action'=>'viewplugin' . $submissionplugin->plugin->get_subtype(),
-                                                     'returnaction'=>$submissionplugin->returnaction,
-                                                     'returnparams'=>http_build_query($submissionplugin->returnparams))),
-                                $icon);
+                $previewstr = get_string('viewsubmission', 'assign');
+                $icon = $this->output->pix_icon('t/preview', $previewstr);
+
+                $expandstr = get_string('viewfull', 'assign');
+                $options = array('class'=>'expandsummaryicon expand_' . $classsuffix);
+                $o .= $this->output->pix_icon('t/switch_plus', $expandstr, null, $options);
+
+                $jsparams = array($submissionplugin->plugin->get_subtype(),
+                                  $submissionplugin->plugin->get_type(),
+                                  $submissionplugin->submission->id);
+
+                $this->page->requires->js_init_call('M.mod_assign.init_plugin_summary', $jsparams);
+
+                $action = 'viewplugin' . $submissionplugin->plugin->get_subtype();
+                $returnparams = http_build_query($submissionplugin->returnparams);
+                $link .= '<noscript>';
+                $urlparams = array('id' => $submissionplugin->coursemoduleid,
+                                   'sid'=>$submissionplugin->submission->id,
+                                   'plugin'=>$submissionplugin->plugin->get_type(),
+                                   'action'=>$action,
+                                   'returnaction'=>$submissionplugin->returnaction,
+                                   'returnparams'=>$returnparams);
+                $url = new moodle_url('/mod/assign/view.php', $urlparams);
+                $link .= $this->output->action_link($url, $icon);
+                $link .= '</noscript>';
 
                 $link .= $this->output->spacer(array('width'=>15));
             }
 
             $o .= $link . $summary;
+            $o .= $this->output->box_end();
+            if ($showviewlink) {
+                $o .= $this->output->box_start('boxaligncenter hidefull full_' . $classsuffix);
+                $classes = 'expandsummaryicon contract_' . $classsuffix;
+                $o .= $this->output->pix_icon('t/switch_minus',
+                                              get_string('viewsummary', 'assign'),
+                                              null,
+                                              array('class'=>$classes));
+                $o .= $submissionplugin->plugin->view($submissionplugin->submission);
+                $o .= $this->output->box_end();
+            }
         } else if ($submissionplugin->view == assign_submission_plugin_submission::FULL) {
             $o .= $this->output->box_start('boxaligncenter submissionfull');
             $o .= $submissionplugin->plugin->view($submissionplugin->submission);
@@ -661,7 +728,7 @@ class mod_assign_renderer extends plugin_renderer_base {
     }
 
     /**
-     * render the grading table
+     * Render the grading table.
      *
      * @param assign_grading_table $table
      * @return string
@@ -679,15 +746,15 @@ class mod_assign_renderer extends plugin_renderer_base {
         $this->page->requires->string_for_js('editaction', 'assign');
         foreach ($table->plugingradingbatchoperations as $plugin => $operations) {
             foreach ($operations as $operation => $description) {
-                $this->page->requires->string_for_js('batchoperationconfirm' . $operation, 'assignfeedback_' . $plugin);
+                $this->page->requires->string_for_js('batchoperationconfirm' . $operation,
+                                                     'assignfeedback_' . $plugin);
             }
         }
-        // need to get from prefs
         $o .= $this->flexible_table($table, $table->get_rows_per_page(), true);
         $o .= $this->output->box_end();
 
         return $o;
-   }
+    }
 
     /**
      * Render a feedback plugin feedback
@@ -699,29 +766,119 @@ class mod_assign_renderer extends plugin_renderer_base {
         $o = '';
 
         if ($feedbackplugin->view == assign_feedback_plugin_feedback::SUMMARY) {
-            $icon = $this->output->pix_icon('t/preview', get_string('view' . substr($feedbackplugin->plugin->get_subtype(), strlen('assign')), 'mod_assign'));
-            $link = '';
             $showviewlink = false;
             $summary = $feedbackplugin->plugin->view_summary($feedbackplugin->grade, $showviewlink);
+
+            $classsuffix = $feedbackplugin->plugin->get_subtype() .
+                           '_' .
+                           $feedbackplugin->plugin->get_type() .
+                           '_' .
+                           $feedbackplugin->grade->id;
+            $o .= $this->output->box_start('boxaligncenter plugincontentsummary summary_' . $classsuffix);
+
+            $link = '';
             if ($showviewlink) {
-                $link = $this->output->action_link(
-                                new moodle_url('/mod/assign/view.php',
-                                               array('id' => $feedbackplugin->coursemoduleid,
-                                                     'gid'=>$feedbackplugin->grade->id,
-                                                     'plugin'=>$feedbackplugin->plugin->get_type(),
-                                                     'action'=>'viewplugin' . $feedbackplugin->plugin->get_subtype(),
-                                                     'returnaction'=>$feedbackplugin->returnaction,
-                                                     'returnparams'=>http_build_query($feedbackplugin->returnparams))),
-                                $icon);
+                $previewstr = get_string('viewfeedback', 'assign');
+                $icon = $this->output->pix_icon('t/preview', $previewstr);
+
+                $expandstr = get_string('viewfull', 'assign');
+                $options = array('class'=>'expandsummaryicon expand_' . $classsuffix);
+                $o .= $this->output->pix_icon('t/switch_plus', $expandstr, null, $options);
+
+                $jsparams = array($feedbackplugin->plugin->get_subtype(),
+                                  $feedbackplugin->plugin->get_type(),
+                                  $feedbackplugin->grade->id);
+                $this->page->requires->js_init_call('M.mod_assign.init_plugin_summary', $jsparams);
+
+                $urlparams = array('id' => $feedbackplugin->coursemoduleid,
+                                   'gid'=>$feedbackplugin->grade->id,
+                                   'plugin'=>$feedbackplugin->plugin->get_type(),
+                                   'action'=>'viewplugin' . $feedbackplugin->plugin->get_subtype(),
+                                   'returnaction'=>$feedbackplugin->returnaction,
+                                   'returnparams'=>http_build_query($feedbackplugin->returnparams));
+                $url = new moodle_url('/mod/assign/view.php', $urlparams);
+                $link .= '<noscript>';
+                $link .= $this->output->action_link($url, $icon);
+                $link .= '</noscript>';
+
                 $link .= $this->output->spacer(array('width'=>15));
             }
 
             $o .= $link . $summary;
+            $o .= $this->output->box_end();
+            if ($showviewlink) {
+                $o .= $this->output->box_start('boxaligncenter hidefull full_' . $classsuffix);
+                $classes = 'expandsummaryicon contract_' . $classsuffix;
+                $o .= $this->output->pix_icon('t/switch_minus',
+                                              get_string('viewsummary', 'assign'),
+                                              null,
+                                              array('class'=>$classes));
+                $o .= $feedbackplugin->plugin->view($feedbackplugin->grade);
+                $o .= $this->output->box_end();
+            }
         } else if ($feedbackplugin->view == assign_feedback_plugin_feedback::FULL) {
             $o .= $this->output->box_start('boxaligncenter feedbackfull');
             $o .= $feedbackplugin->plugin->view($feedbackplugin->grade);
             $o .= $this->output->box_end();
         }
+
+        return $o;
+    }
+
+    /**
+     * Render a course index summary
+     *
+     * @param assign_course_index_summary $indexsummary
+     * @return string
+     */
+    public function render_assign_course_index_summary(assign_course_index_summary $indexsummary) {
+        $o = '';
+
+        $strplural = get_string('modulenameplural', 'assign');
+        $strsectionname  = $indexsummary->courseformatname;
+        $strduedate = get_string('duedate', 'assign');
+        $strsubmission = get_string('submission', 'assign');
+        $strgrade = get_string('grade');
+
+        $table = new html_table();
+        if ($indexsummary->usesections) {
+            $table->head  = array ($strsectionname, $strplural, $strduedate, $strsubmission, $strgrade);
+            $table->align = array ('left', 'left', 'center', 'right', 'right');
+        } else {
+            $table->head  = array ($strplural, $strduedate, $strsubmission, $strgrade);
+            $table->align = array ('left', 'left', 'center', 'right');
+        }
+        $table->data = array();
+
+        $currentsection = '';
+        foreach ($indexsummary->assignments as $info) {
+            $params = array('id' => $info['cmid']);
+            $link = html_writer::link(new moodle_url('/mod/assign/view.php', $params),
+                                      $info['cmname']);
+            $due = $info['timedue'] ? userdate($info['timedue']) : '-';
+
+            $printsection = '';
+            if ($indexsummary->usesections) {
+                if ($info['sectionname'] !== $currentsection) {
+                    if ($info['sectionname']) {
+                        $printsection = $info['sectionname'];
+                    }
+                    if ($currentsection !== '') {
+                        $table->data[] = 'hr';
+                    }
+                    $currentsection = $info['sectionname'];
+                }
+            }
+
+            if ($indexsummary->usesections) {
+                $row = array($printsection, $link, $due, $info['submissioninfo'], $info['gradeinfo']);
+            } else {
+                $row = array($link, $due, $info['submissioninfo'], $info['gradeinfo']);
+            }
+            $table->data[] = $row;
+        }
+
+        $o .= html_writer::table($table);
 
         return $o;
     }
@@ -746,20 +903,37 @@ class mod_assign_renderer extends plugin_renderer_base {
 
         $result = '<ul>';
         foreach ($dir['subdirs'] as $subdir) {
-            $image = $this->output->pix_icon(file_folder_icon(), $subdir['dirname'], 'moodle', array('class'=>'icon'));
-            $result .= '<li yuiConfig=\''.json_encode($yuiconfig).'\'><div>'.$image.' '.s($subdir['dirname']).'</div> '.$this->htmllize_tree($tree, $subdir).'</li>';
+            $image = $this->output->pix_icon(file_folder_icon(),
+                                             $subdir['dirname'],
+                                             'moodle',
+                                             array('class'=>'icon'));
+            $result .= '<li yuiConfig=\'' . json_encode($yuiconfig) . '\'>' .
+                       '<div>' . $image . ' ' . s($subdir['dirname']) . '</div> ' .
+                       $this->htmllize_tree($tree, $subdir) .
+                       '</li>';
         }
 
         foreach ($dir['files'] as $file) {
             $filename = $file->get_filename();
             if ($CFG->enableplagiarism) {
                 require_once($CFG->libdir.'/plagiarismlib.php');
-                $plagiarsmlinks = plagiarism_get_links(array('userid'=>$file->get_userid(), 'file'=>$file, 'cmid'=>$tree->cm->id, 'course'=>$tree->course));
+                $plagiarismlinks = plagiarism_get_links(array('userid'=>$file->get_userid(),
+                                                             'file'=>$file,
+                                                             'cmid'=>$tree->cm->id,
+                                                             'course'=>$tree->course));
             } else {
-                $plagiarsmlinks = '';
+                $plagiarismlinks = '';
             }
-            $image = $this->output->pix_icon(file_file_icon($file), $filename, 'moodle', array('class'=>'icon'));
-            $result .= '<li yuiConfig=\''.json_encode($yuiconfig).'\'><div>'.$image.' '.$file->fileurl.' '.$plagiarsmlinks.$file->portfoliobutton.'</div></li>';
+            $image = $this->output->pix_icon(file_file_icon($file),
+                                             $filename,
+                                             'moodle',
+                                             array('class'=>'icon'));
+            $result .= '<li yuiConfig=\'' . json_encode($yuiconfig) . '\'>' .
+                       '<div>' . $image . ' ' .
+                                 $file->fileurl . ' ' .
+                                 $plagiarismlinks .
+                                 $file->portfoliobutton . '</div>' .
+                       '</li>';
         }
 
         $result .= '</ul>';
@@ -772,7 +946,8 @@ class mod_assign_renderer extends plugin_renderer_base {
      *
      * @param flexible_table $table The table to render
      * @param int $rowsperpage How many assignments to render in a page
-     * @param bool $displaylinks - Whether to render links in the table (e.g. downloads would not enable this)
+     * @param bool $displaylinks - Whether to render links in the table
+     *                             (e.g. downloads would not enable this)
      * @return string HTML
      */
     protected function flexible_table(flexible_table $table, $rowsperpage, $displaylinks) {

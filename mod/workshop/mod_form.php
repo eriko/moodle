@@ -148,7 +148,6 @@ class mod_workshop_mod_form extends moodleform_mod {
         $mform->setDefault('nattachments', 1);
 
         $options = get_max_upload_sizes($CFG->maxbytes, $this->course->maxbytes);
-        $options[0] = get_string('courseuploadlimit') . ' ('.display_size($this->course->maxbytes).')';
         $mform->addElement('select', 'maxbytes', get_string('maxbytes', 'workshop'), $options);
         $mform->setDefault('maxbytes', $workshopconfig->maxbytes);
 
@@ -171,6 +170,14 @@ class mod_workshop_mod_form extends moodleform_mod {
         $mform->setDefault('examplesmode', $workshopconfig->examplesmode);
         $mform->disabledIf('examplesmode', 'useexamples');
         $mform->setAdvanced('examplesmode');
+
+        // Miscellaneous settings
+        $mform->addElement('header', 'miscellaneoussettings', get_string('miscellaneoussettings', 'workshop'));
+
+        $label = get_string('conclusion', 'workshop');
+        $mform->addElement('editor', 'conclusioneditor', $label, null,
+                            workshop::instruction_editors_options($this->context));
+        $mform->addHelpButton('conclusioneditor', 'conclusion', 'workshop');
 
         // Access control -------------------------------------------------------------
         $mform->addElement('header', 'accesscontrol', get_string('accesscontrol', 'workshop'));
@@ -237,6 +244,14 @@ class mod_workshop_mod_form extends moodleform_mod {
                                 $data['instructreviewers']);
             $data['instructreviewerseditor']['format'] = $data['instructreviewersformat'];
             $data['instructreviewerseditor']['itemid'] = $draftitemid;
+
+            $draftitemid = file_get_submitted_draft_itemid('conclusion');
+            $data['conclusioneditor']['text'] = file_prepare_draft_area($draftitemid, $this->context->id,
+                                'mod_workshop', 'conclusion', 0,
+                                workshop::instruction_editors_options($this->context),
+                                $data['conclusion']);
+            $data['conclusioneditor']['format'] = $data['conclusionformat'];
+            $data['conclusioneditor']['itemid'] = $draftitemid;
         } else {
             // adding a new workshop instance
             $draftitemid = file_get_submitted_draft_itemid('instructauthors');
@@ -246,6 +261,10 @@ class mod_workshop_mod_form extends moodleform_mod {
             $draftitemid = file_get_submitted_draft_itemid('instructreviewers');
             file_prepare_draft_area($draftitemid, null, 'mod_workshop', 'instructreviewers', 0);    // no context yet, itemid not used
             $data['instructreviewerseditor'] = array('text' => '', 'format' => editors_get_preferred_format(), 'itemid' => $draftitemid);
+
+            $draftitemid = file_get_submitted_draft_itemid('conclusion');
+            file_prepare_draft_area($draftitemid, null, 'mod_workshop', 'conclusion', 0);    // no context yet, itemid not used
+            $data['conclusioneditor'] = array('text' => '', 'format' => editors_get_preferred_format(), 'itemid' => $draftitemid);
         }
     }
 

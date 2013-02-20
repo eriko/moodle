@@ -44,7 +44,11 @@ class enrol_self_edit_form extends moodleform {
                          ENROL_INSTANCE_DISABLED => get_string('no'));
         $mform->addElement('select', 'status', get_string('status', 'enrol_self'), $options);
         $mform->addHelpButton('status', 'status', 'enrol_self');
-        $mform->setDefault('status', $plugin->get_config('status'));
+
+        $options = array(1 => get_string('yes'), 0 => get_string('no'));
+        $mform->addElement('select', 'customint6', get_string('newenrols', 'enrol_self'), $options);
+        $mform->addHelpButton('customint6', 'newenrols', 'enrol_self');
+        $mform->disabledIf('customint6', 'status', 'eq', ENROL_INSTANCE_DISABLED);
 
         $mform->addElement('passwordunmask', 'password', get_string('password', 'enrol_self'));
         $mform->addHelpButton('password', 'password', 'enrol_self');
@@ -56,19 +60,20 @@ class enrol_self_edit_form extends moodleform {
                          0 => get_string('no'));
         $mform->addElement('select', 'customint1', get_string('groupkey', 'enrol_self'), $options);
         $mform->addHelpButton('customint1', 'groupkey', 'enrol_self');
-        $mform->setDefault('customint1', $plugin->get_config('groupkey'));
 
-        if ($instance->id) {
-            $roles = $this->extend_assignable_roles($context, $instance->roleid);
-        } else {
-            $roles = $this->extend_assignable_roles($context, $plugin->get_config('roleid'));
-        }
+        $roles = $this->extend_assignable_roles($context, $instance->roleid);
         $mform->addElement('select', 'roleid', get_string('role', 'enrol_self'), $roles);
-        $mform->setDefault('roleid', $plugin->get_config('roleid'));
 
         $mform->addElement('duration', 'enrolperiod', get_string('enrolperiod', 'enrol_self'), array('optional' => true, 'defaultunit' => 86400));
-        $mform->setDefault('enrolperiod', $plugin->get_config('enrolperiod'));
         $mform->addHelpButton('enrolperiod', 'enrolperiod', 'enrol_self');
+
+        $options = array(0 => get_string('no'), 1 => get_string('expirynotifyenroller', 'core_enrol'), 2 => get_string('expirynotifyall', 'core_enrol'));
+        $mform->addElement('select', 'expirynotify', get_string('expirynotify', 'core_enrol'), $options);
+        $mform->addHelpButton('expirynotify', 'expirynotify', 'core_enrol');
+
+        $mform->addElement('duration', 'expirythreshold', get_string('expirythreshold', 'core_enrol'), array('optional' => false, 'defaultunit' => 86400));
+        $mform->addHelpButton('expirythreshold', 'expirythreshold', 'core_enrol');
+        $mform->disabledIf('expirythreshold', 'expirynotify', 'eq', 0);
 
         $mform->addElement('date_selector', 'enrolstartdate', get_string('enrolstartdate', 'enrol_self'), array('optional' => true));
         $mform->setDefault('enrolstartdate', 0);
@@ -92,11 +97,9 @@ class enrol_self_edit_form extends moodleform {
                  14 * 3600 * 24 => get_string('numdays', '', 14),
                  7 * 3600 * 24 => get_string('numdays', '', 7));
         $mform->addElement('select', 'customint2', get_string('longtimenosee', 'enrol_self'), $options);
-        $mform->setDefault('customint2', $plugin->get_config('longtimenosee'));
         $mform->addHelpButton('customint2', 'longtimenosee', 'enrol_self');
 
         $mform->addElement('text', 'customint3', get_string('maxenrolled', 'enrol_self'));
-        $mform->setDefault('customint3', $plugin->get_config('maxenrolled'));
         $mform->addHelpButton('customint3', 'maxenrolled', 'enrol_self');
         $mform->setType('customint3', PARAM_INT);
 
@@ -133,7 +136,6 @@ class enrol_self_edit_form extends moodleform {
         }
 
         $mform->addElement('advcheckbox', 'customint4', get_string('sendcoursewelcomemessage', 'enrol_self'));
-        $mform->setDefault('customint4', $plugin->get_config('sendcoursewelcomemessage'));
         $mform->addHelpButton('customint4', 'sendcoursewelcomemessage', 'enrol_self');
 
         $mform->addElement('textarea', 'customtext1', get_string('customwelcomemessage', 'enrol_self'), array('cols'=>'60', 'rows'=>'8'));
@@ -185,6 +187,10 @@ class enrol_self_edit_form extends moodleform {
             if (!empty($data['enrolenddate']) and $data['enrolenddate'] < $data['enrolstartdate']) {
                 $errors['enrolenddate'] = get_string('enrolenddaterror', 'enrol_self');
             }
+        }
+
+        if ($data['expirynotify'] > 0 and $data['expirythreshold'] < 86400) {
+            $errors['expirythreshold'] = get_string('errorthresholdlow', 'core_enrol');
         }
 
         return $errors;

@@ -81,6 +81,7 @@ abstract class base_moodleform extends moodleform {
     function definition() {
         $ui = $this->uistage->get_ui();
         $mform = $this->_form;
+        $mform->setDisableShortforms();
         $stage = $mform->addElement('hidden', 'stage', $this->uistage->get_stage());
         $stage = $mform->addElement('hidden', $ui->get_name(), $ui->get_uniqueid());
         $params = $this->uistage->get_params();
@@ -322,6 +323,7 @@ abstract class base_moodleform extends moodleform {
         $config->question = get_string('confirmcancelquestion', 'backup');
         $config->yesLabel = get_string('confirmcancelyes', 'backup');
         $config->noLabel = get_string('confirmcancelno', 'backup');
+        $config->closeButtonTitle = get_string('close', 'editor');
         $PAGE->requires->yui_module('moodle-backup-confirmcancel', 'M.core_backup.watch_cancel_buttons', array($config));
 
         $PAGE->requires->yui_module('moodle-backup-backupselectall', 'M.core_backup.select_all_init',

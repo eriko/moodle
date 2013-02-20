@@ -43,6 +43,8 @@ require_capability('mod/lesson:manage', $context);
 
 $ufields = user_picture::fields('u'); // These fields are enough
 $params = array("lessonid" => $lesson->id);
+list($sort, $sortparams) = users_order_by_sql('u');
+$params = array_merge($params, $sortparams);
 // TODO: Improve this. Fetching all students always is crazy!
 if (!empty($cm->groupingid)) {
     $params["groupid"] = $cm->groupingid;
@@ -52,14 +54,14 @@ if (!empty($cm->groupingid)) {
                     INNER JOIN {groups_members} gm ON gm.userid = u.id
                     INNER JOIN {groupings_groups} gg ON gm.groupid = :groupid
                 WHERE a.lessonid = :lessonid
-                ORDER BY u.lastname";
+                ORDER BY $sort";
 } else {
     $sql = "SELECT DISTINCT $ufields
             FROM {user} u,
                  {lesson_attempts} a
             WHERE a.lessonid = :lessonid and
                   u.id = a.userid
-            ORDER BY u.lastname";
+            ORDER BY $sort";
 }
 
 if (! $students = $DB->get_records_sql($sql, $params)) {
@@ -315,8 +317,11 @@ if ($action === 'delete') {
         $checklinks  = '<a href="javascript: checkall();">'.get_string('selectall').'</a> / ';
         $checklinks .= '<a href="javascript: checknone();">'.get_string('deselectall').'</a>';
         $checklinks .= html_writer::label('action', 'menuaction', false, array('class' => 'accesshide'));
-        $checklinks .= html_writer::select(array('delete' => get_string('deleteselected')), 'action', 0, array(''=>'choosedots'), array('id'=>'actionid'));
-        $PAGE->requires->js_init_call('M.util.init_select_autosubmit', array('theform', 'actionid', ''));
+        $checklinks .= html_writer::select(array('delete' => get_string('deleteselected')), 'action', 0, array(''=>'choosedots'), array('id'=>'actionid', 'class' => 'autosubmit'));
+        $PAGE->requires->yui_module('moodle-core-formautosubmit',
+            'M.core.init_formautosubmit',
+            array(array('selectid' => 'actionid', 'nothing' => false))
+        );
         echo $OUTPUT->box($checklinks, 'center');
         echo '</form>';
     }

@@ -3,7 +3,7 @@
 /**
  * @author Martin Dougiamas
  * @author Jerome GUTIERREZ
- * @author I�aki Arenaza
+ * @author Iñaki Arenaza
  * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
  * @package moodle multiauth
  *
@@ -104,12 +104,14 @@ class auth_plugin_cas extends auth_plugin_ldap {
         $this->connectCAS();
 
         if (phpCAS::checkAuthentication()) {
+            $frm = new stdClass();
             $frm->username = phpCAS::getUser();
             $frm->password = 'passwdCas';
             return;
         }
 
         if (isset($_GET['loginguest']) && ($_GET['loginguest'] == true)) {
+            $frm = new stdClass();
             $frm->username = 'guest';
             $frm->password = 'guest';
             return;
@@ -206,6 +208,10 @@ class auth_plugin_cas extends auth_plugin_ldap {
             }
         }
 
+        if (!ldap_paged_results_supported($this->config->ldap_version)) {
+            echo $OUTPUT->notification(get_string('pagedresultsnotsupp', 'auth_ldap'));
+        }
+
         include($CFG->dirroot.'/auth/cas/config.html');
     }
 
@@ -268,13 +274,22 @@ class auth_plugin_cas extends auth_plugin_ldap {
         if (!isset($config->certificate_path)) {
             $config->certificate_path = '';
         }
+        if (!isset($config->logout_return_url)) {
+            $config->logout_return_url = '';
+        }
 
         // LDAP settings
         if (!isset($config->host_url)) {
             $config->host_url = '';
         }
+        if (!isset($config->start_tls)) {
+             $config->start_tls = false;
+        }
         if (empty($config->ldapencoding)) {
             $config->ldapencoding = 'utf-8';
+        }
+        if (!isset($config->pagesize)) {
+            $config->pagesize = LDAP_DEFAULT_PAGESIZE;
         }
         if (!isset($config->contexts)) {
             $config->contexts = '';
@@ -331,10 +346,13 @@ class auth_plugin_cas extends auth_plugin_ldap {
         set_config('multiauth', $config->multiauth, $this->pluginconfig);
         set_config('certificate_check', $config->certificate_check, $this->pluginconfig);
         set_config('certificate_path', $config->certificate_path, $this->pluginconfig);
+        set_config('logout_return_url', $config->logout_return_url, $this->pluginconfig);
 
         // save LDAP settings
         set_config('host_url', trim($config->host_url), $this->pluginconfig);
+        set_config('start_tls', $config->start_tls, $this->pluginconfig);
         set_config('ldapencoding', trim($config->ldapencoding), $this->pluginconfig);
+        set_config('pagesize', (int)trim($config->pagesize), $this->pluginconfig);
         set_config('contexts', trim($config->contexts), $this->pluginconfig);
         set_config('user_type', textlib::strtolower(trim($config->user_type)), $this->pluginconfig);
         set_config('user_attribute', textlib::strtolower(trim($config->user_attribute)), $this->pluginconfig);
@@ -438,5 +456,20 @@ class auth_plugin_cas extends auth_plugin_ldap {
             return;
         }
         parent::sync_users($do_updates);
+    }
+
+    /**
+    * Hook for logout page
+    */
+    function logoutpage_hook() {
+        global $USER, $redirect;
+        // Only do this if the user is actually logged in via CAS
+        if ($USER->auth === $this->authtype) {
+            // Check if there is an alternative logout return url defined
+            if (isset($this->config->logout_return_url) && !empty($this->config->logout_return_url)) {
+                // Set redirect to alternative return url
+                $redirect = $this->config->logout_return_url;
+            }
+        }
     }
 }

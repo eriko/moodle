@@ -282,6 +282,15 @@ $functions = array(
         'capabilities'=> 'moodle/user:viewdetails, moodle/user:viewhiddendetails, moodle/course:useremail, moodle/user:update',
     ),
 
+    'core_user_get_users_by_field' => array(
+        'classname'   => 'core_user_external',
+        'methodname'  => 'get_users_by_field',
+        'classpath'   => 'user/externallib.php',
+        'description' => 'Retrieve users information for a specified unique field - If you want to do a user search, use core_user_get_users()',
+        'type'        => 'read',
+        'capabilities'=> 'moodle/user:viewdetails, moodle/user:viewhiddendetails, moodle/course:useremail, moodle/user:update',
+    ),
+
     'core_user_get_users_by_id' => array(
         'classname'   => 'core_user_external',
         'methodname'  => 'get_users_by_id',
@@ -355,6 +364,15 @@ $functions = array(
     ),
 
     // === enrol related functions ===
+
+    'core_enrol_get_enrolled_users_with_capability' => array(
+        'classname'   => 'core_enrol_external',
+        'methodname'  => 'get_enrolled_users_with_capability',
+        'classpath'   => 'enrol/externallib.php',
+        'description' => 'For each course and capability specified, return a list of the users that are enrolled in the course
+                          and have that capability',
+        'type'        => 'read',
+    ),
 
     'moodle_enrol_get_enrolled_users' => array(
         'classname'   => 'moodle_enrol_external',
@@ -496,6 +514,15 @@ $functions = array(
         'capabilities'=> 'moodle/backup:backupcourse,moodle/restore:restorecourse,moodle/course:create',
     ),
 
+    'core_course_update_courses' => array(
+        'classname'   => 'core_course_external',
+        'methodname'  => 'update_courses',
+        'classpath'   => 'course/externallib.php',
+        'description' => 'Update courses',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/course:update,moodle/course:changecategory,moodle/course:changefullname,moodle/course:changeshortname,moodle/course:changeidnumber,moodle/course:changesummary,moodle/course:visibility',
+    ),
+
     // === course category related functions ===
 
     'core_course_get_categories' => array(
@@ -522,7 +549,7 @@ $functions = array(
         'classpath'   => 'course/externallib.php',
         'description' => 'Update categories',
         'type'        => 'write',
-        'capabilities'=> 'moodle:category/manage',
+        'capabilities'=> 'moodle/category:manage',
     ),
 
     'core_course_delete_categories' => array(
@@ -563,6 +590,60 @@ $functions = array(
         'capabilities'=> 'moodle/site:sendmessage',
     ),
 
+    'core_message_create_contacts' => array(
+        'classname'   => 'core_message_external',
+        'methodname'  => 'create_contacts',
+        'classpath'   => 'message/externallib.php',
+        'description' => 'Add contacts to the contact list',
+        'type'        => 'write',
+        'capabilities'=> '',
+    ),
+
+    'core_message_delete_contacts' => array(
+        'classname'   => 'core_message_external',
+        'methodname'  => 'delete_contacts',
+        'classpath'   => 'message/externallib.php',
+        'description' => 'Remove contacts from the contact list',
+        'type'        => 'write',
+        'capabilities'=> '',
+    ),
+
+    'core_message_block_contacts' => array(
+        'classname'   => 'core_message_external',
+        'methodname'  => 'block_contacts',
+        'classpath'   => 'message/externallib.php',
+        'description' => 'Block contacts',
+        'type'        => 'write',
+        'capabilities'=> '',
+    ),
+
+    'core_message_unblock_contacts' => array(
+        'classname'   => 'core_message_external',
+        'methodname'  => 'unblock_contacts',
+        'classpath'   => 'message/externallib.php',
+        'description' => 'Unblock contacts',
+        'type'        => 'write',
+        'capabilities'=> '',
+    ),
+
+    'core_message_get_contacts' => array(
+        'classname'   => 'core_message_external',
+        'methodname'  => 'get_contacts',
+        'classpath'   => 'message/externallib.php',
+        'description' => 'Retrieve the contact list',
+        'type'        => 'read',
+        'capabilities'=> '',
+    ),
+
+    'core_message_search_contacts' => array(
+        'classname'   => 'core_message_external',
+        'methodname'  => 'search_contacts',
+        'classpath'   => 'message/externallib.php',
+        'description' => 'Search for contacts',
+        'type'        => 'read',
+        'capabilities'=> '',
+    ),
+
     // === notes related functions ===
 
     'moodle_notes_create_notes' => array(
@@ -601,6 +682,61 @@ $functions = array(
         'type'        => 'read',
     ),
 
+    'core_get_string' => array(
+        'classname'   => 'core_external',
+        'methodname'  => 'get_string',
+        'classpath'   => 'lib/external/externallib.php',
+        'description' => 'Return a translated string - similar to core get_string() call',
+        'type'        => 'read',
+    ),
+
+    'core_get_strings' => array(
+        'classname'   => 'core_external',
+        'methodname'  => 'get_strings',
+        'classpath'   => 'lib/external/externallib.php',
+        'description' => 'Return some translated strings - like several core get_string() calls',
+        'type'        => 'read',
+    ),
+
+    'core_get_component_strings' => array(
+        'classname'   => 'core_external',
+        'methodname'  => 'get_component_strings',
+        'classpath'   => 'lib/external/externallib.php',
+        'description' => 'Return all raw strings (with {$a->xxx}) for a specific component
+            - similar to core get_component_strings() call',
+        'type'        => 'read',
+    ),
+
+
+    // === Calendar related functions ===
+
+    'core_calendar_delete_calendar_events' => array(
+        'classname'   => 'core_calendar_external',
+        'methodname'  => 'delete_calendar_events',
+        'description' => 'Delete calendar events',
+        'classpath'   => 'calendar/externallib.php',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/calendar:manageentries', 'moodle/calendar:manageownentries', 'moodle/calendar:managegroupentries'
+    ),
+
+
+    'core_calendar_get_calendar_events' => array(
+        'classname'   => 'core_calendar_external',
+        'methodname'  => 'get_calendar_events',
+        'description' => 'Get calendar events',
+        'classpath'   => 'calendar/externallib.php',
+        'type'        => 'read',
+        'capabilities'=> 'moodle/calendar:manageentries', 'moodle/calendar:manageownentries', 'moodle/calendar:managegroupentries'
+    ),
+
+    'core_calendar_create_calendar_events' => array(
+        'classname'   => 'core_calendar_external',
+        'methodname'  => 'create_calendar_events',
+        'description' => 'Create calendar events',
+        'classpath'   => 'calendar/externallib.php',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/calendar:manageentries', 'moodle/calendar:manageownentries', 'moodle/calendar:managegroupentries'
+    ),
 );
 
 $services = array(
@@ -614,7 +750,8 @@ $services = array(
             'moodle_user_get_course_participants_by_id',
             'moodle_user_get_users_by_courseid',
             'moodle_message_send_instantmessages',
-            'core_course_get_contents'),
+            'core_course_get_contents',
+            'core_get_component_strings'),
         'enabled' => 0,
         'restrictedusers' => 0,
         'shortname' => MOODLE_OFFICIAL_MOBILE_SERVICE,

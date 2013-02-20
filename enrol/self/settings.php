@@ -47,6 +47,12 @@ if ($ADMIN->fulltree) {
     );
     $settings->add(new admin_setting_configselect('enrol_self/expiredaction', get_string('expiredaction', 'enrol_self'), get_string('expiredaction_help', 'enrol_self'), ENROL_EXT_REMOVED_KEEP, $options));
 
+    $options = array();
+    for ($i=0; $i<24; $i++) {
+        $options[$i] = $i;
+    }
+    $settings->add(new admin_setting_configselect('enrol_self/expirynotifyhour', get_string('expirynotifyhour', 'core_enrol'), '', 6, $options));
+
     //--- enrol instance defaults ----------------------------------------------------------------------------
     $settings->add(new admin_setting_heading('enrol_self_defaults',
         get_string('enrolinstancedefaults', 'admin'), get_string('enrolinstancedefaults_desc', 'admin')));
@@ -58,6 +64,10 @@ if ($ADMIN->fulltree) {
                      ENROL_INSTANCE_DISABLED => get_string('no'));
     $settings->add(new admin_setting_configselect('enrol_self/status',
         get_string('status', 'enrol_self'), get_string('status_desc', 'enrol_self'), ENROL_INSTANCE_DISABLED, $options));
+
+    $options = array(1  => get_string('yes'), 0 => get_string('no'));
+    $settings->add(new admin_setting_configselect('enrol_self/newenrols',
+        get_string('newenrols', 'enrol_self'), get_string('newenrols_desc', 'enrol_self'), 1, $options));
 
     $options = array(1  => get_string('yes'),
                      0 => get_string('no'));
@@ -74,6 +84,13 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configduration('enrol_self/enrolperiod',
         get_string('enrolperiod', 'enrol_self'), get_string('enrolperiod_desc', 'enrol_self'), 0));
+
+    $options = array(0 => get_string('no'), 1 => get_string('expirynotifyenroller', 'core_enrol'), 2 => get_string('expirynotifyall', 'core_enrol'));
+    $settings->add(new admin_setting_configselect('enrol_self/expirynotify',
+        get_string('expirynotify', 'core_enrol'), get_string('expirynotify_help', 'core_enrol'), 0, $options));
+
+    $settings->add(new admin_setting_configduration('enrol_self/expirythreshold',
+        get_string('expirythreshold', 'core_enrol'), get_string('expirythreshold_help', 'core_enrol'), 86400, 86400));
 
     $options = array(0 => get_string('never'),
                      1800 * 3600 * 24 => get_string('numdays', '', 1800),

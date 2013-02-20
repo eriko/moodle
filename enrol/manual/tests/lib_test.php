@@ -44,6 +44,7 @@ class enrol_manual_lib_testcase extends advanced_testcase {
 
         $this->resetAfterTest();
 
+        /** @var $manplugin enrol_manual_plugin */
         $manplugin = enrol_get_plugin('manual');
 
         // Setup a few courses and users.
@@ -206,7 +207,10 @@ class enrol_manual_lib_testcase extends advanced_testcase {
         global $DB;
         $this->resetAfterTest();
 
+        /** @var $manualplugin enrol_manual_plugin */
         $manualplugin = enrol_get_plugin('manual');
+
+        $trace = new null_progress_trace();
 
         $now = time();
 
@@ -261,19 +265,19 @@ class enrol_manual_lib_testcase extends advanced_testcase {
         // Execute tests.
 
         $this->assertEquals(ENROL_EXT_REMOVED_KEEP, $manualplugin->get_config('expiredaction'));
-        $manualplugin->sync(null, false);
+        $manualplugin->sync($trace, null);
         $this->assertEquals(6, $DB->count_records('user_enrolments'));
         $this->assertEquals(7, $DB->count_records('role_assignments'));
 
 
         $manualplugin->set_config('expiredaction', ENROL_EXT_REMOVED_SUSPENDNOROLES);
-        $manualplugin->sync($course2->id, false);
+        $manualplugin->sync($trace, $course2->id);
         $this->assertEquals(6, $DB->count_records('user_enrolments'));
         $this->assertEquals(7, $DB->count_records('role_assignments'));
 
         $this->assertTrue($DB->record_exists('role_assignments', array('contextid'=>$context1->id, 'userid'=>$user3->id, 'roleid'=>$studentrole->id)));
         $this->assertTrue($DB->record_exists('role_assignments', array('contextid'=>$context3->id, 'userid'=>$user3->id, 'roleid'=>$teacherrole->id)));
-        $manualplugin->sync(null, false);
+        $manualplugin->sync($trace, null);
         $this->assertEquals(6, $DB->count_records('user_enrolments'));
         $this->assertEquals(5, $DB->count_records('role_assignments'));
         $this->assertEquals(4, $DB->count_records('role_assignments', array('roleid'=>$studentrole->id)));
@@ -292,7 +296,7 @@ class enrol_manual_lib_testcase extends advanced_testcase {
         $this->assertEquals(1, $DB->count_records('role_assignments', array('roleid'=>$teacherrole->id)));
         $this->assertEquals(1, $DB->count_records('role_assignments', array('roleid'=>$managerrole->id)));
 
-        $manualplugin->sync(null, false);
+        $manualplugin->sync($trace, null);
         $this->assertEquals(4, $DB->count_records('user_enrolments'));
         $this->assertFalse($DB->record_exists('user_enrolments', array('enrolid'=>$instance1->id, 'userid'=>$user3->id)));
         $this->assertFalse($DB->record_exists('user_enrolments', array('enrolid'=>$instance3->id, 'userid'=>$user3->id)));
@@ -300,5 +304,169 @@ class enrol_manual_lib_testcase extends advanced_testcase {
         $this->assertEquals(4, $DB->count_records('role_assignments', array('roleid'=>$studentrole->id)));
         $this->assertEquals(0, $DB->count_records('role_assignments', array('roleid'=>$teacherrole->id)));
         $this->assertEquals(1, $DB->count_records('role_assignments', array('roleid'=>$managerrole->id)));
+    }
+
+    public function test_send_expiry_notifications() {
+        global $DB, $CFG;
+        $this->resetAfterTest();
+        $this->preventResetByRollback(); // Messaging does not like transactions...
+
+        $trace = new null_progress_trace();
+
+        /** @var $manualplugin enrol_manual_plugin */
+        $manualplugin = enrol_get_plugin('manual');
+        $now = time();
+        $admin = get_admin();
+
+        // Note: hopefully nobody executes the unit tests the last second before midnight...
+
+        $manualplugin->set_config('expirynotifylast', $now - 60*60*24);
+        $manualplugin->set_config('expirynotifyhour', 0);
+
+        $studentrole = $DB->get_record('role', array('shortname'=>'student'));
+        $this->assertNotEmpty($studentrole);
+        $editingteacherrole = $DB->get_record('role', array('shortname'=>'editingteacher'));
+        $this->assertNotEmpty($editingteacherrole);
+        $managerrole = $DB->get_record('role', array('shortname'=>'manager'));
+        $this->assertNotEmpty($managerrole);
+
+        $user1 = $this->getDataGenerator()->create_user(array('lastname'=>'xuser1'));
+        $user2 = $this->getDataGenerator()->create_user(array('lastname'=>'xuser2'));
+        $user3 = $this->getDataGenerator()->create_user(array('lastname'=>'xuser3'));
+        $user4 = $this->getDataGenerator()->create_user(array('lastname'=>'xuser4'));
+        $user5 = $this->getDataGenerator()->create_user(array('lastname'=>'xuser5'));
+        $user6 = $this->getDataGenerator()->create_user(array('lastname'=>'xuser6'));
+        $user7 = $this->getDataGenerator()->create_user(array('lastname'=>'xuser6'));
+        $user8 = $this->getDataGenerator()->create_user(array('lastname'=>'xuser6'));
+
+        $course1 = $this->getDataGenerator()->create_course(array('fullname'=>'xcourse1'));
+        $course2 = $this->getDataGenerator()->create_course(array('fullname'=>'xcourse2'));
+        $course3 = $this->getDataGenerator()->create_course(array('fullname'=>'xcourse3'));
+        $course4 = $this->getDataGenerator()->create_course(array('fullname'=>'xcourse4'));
+
+        $this->assertEquals(4, $DB->count_records('enrol', array('enrol'=>'manual')));
+
+        $instance1 = $DB->get_record('enrol', array('courseid'=>$course1->id, 'enrol'=>'manual'), '*', MUST_EXIST);
+        $instance1->expirythreshold = 60*60*24*4;
+        $instance1->expirynotify    = 1;
+        $instance1->notifyall       = 1;
+        $DB->update_record('enrol', $instance1);
+
+        $instance2 = $DB->get_record('enrol', array('courseid'=>$course2->id, 'enrol'=>'manual'), '*', MUST_EXIST);
+        $instance2->expirythreshold = 60*60*24*1;
+        $instance2->expirynotify    = 1;
+        $instance2->notifyall       = 1;
+        $DB->update_record('enrol', $instance2);
+
+        $instance3 = $DB->get_record('enrol', array('courseid'=>$course3->id, 'enrol'=>'manual'), '*', MUST_EXIST);
+        $instance3->expirythreshold = 60*60*24*1;
+        $instance3->expirynotify    = 1;
+        $instance3->notifyall       = 0;
+        $DB->update_record('enrol', $instance3);
+
+        $instance4 = $DB->get_record('enrol', array('courseid'=>$course4->id, 'enrol'=>'manual'), '*', MUST_EXIST);
+        $instance4->expirythreshold = 60*60*24*1;
+        $instance4->expirynotify    = 0;
+        $instance4->notifyall       = 0;
+        $DB->update_record('enrol', $instance4);
+
+        $manualplugin->enrol_user($instance1, $user1->id, $editingteacherrole->id, 0, $now + 60*60*24*1, ENROL_USER_SUSPENDED); // Suspended users are not notified.
+        $manualplugin->enrol_user($instance1, $user2->id, $studentrole->id, 0, $now + 60*60*24*5);                       // Above threshold are not notified.
+        $manualplugin->enrol_user($instance1, $user3->id, $studentrole->id, 0, $now + 60*60*24*3 + 60*60);               // Less than one day after threshold - should be notified.
+        $manualplugin->enrol_user($instance1, $user4->id, $studentrole->id, 0, $now + 60*60*24*4 - 60*3);                // Less than one day after threshold - should be notified.
+        $manualplugin->enrol_user($instance1, $user5->id, $studentrole->id, 0, $now + 60*60);                            // Should have been already notified.
+        $manualplugin->enrol_user($instance1, $user6->id, $studentrole->id, 0, $now - 60);                               // Already expired.
+        $manualplugin->enrol_user($instance1, $user7->id, $editingteacherrole->id);
+        $manualplugin->enrol_user($instance1, $user8->id, $managerrole->id);                                             // Highest role --> enroller.
+
+        $manualplugin->enrol_user($instance2, $user1->id, $studentrole->id);
+        $manualplugin->enrol_user($instance2, $user2->id, $studentrole->id, 0, $now + 60*60*24*1 + 60*3);                // Above threshold are not notified.
+        $manualplugin->enrol_user($instance2, $user3->id, $studentrole->id, 0, $now + 60*60*24*1 - 60*60);               // Less than one day after threshold - should be notified.
+
+        $manualplugin->enrol_user($instance3, $user1->id, $editingteacherrole->id);
+        $manualplugin->enrol_user($instance3, $user2->id, $studentrole->id, 0, $now + 60*60*24*1 + 60);                  // Above threshold are not notified.
+        $manualplugin->enrol_user($instance3, $user3->id, $studentrole->id, 0, $now + 60*60*24*1 - 60*60);               // Less than one day after threshold - should be notified.
+
+        $manualplugin->enrol_user($instance4, $user4->id, $editingteacherrole->id);
+        $manualplugin->enrol_user($instance4, $user5->id, $studentrole->id, 0, $now + 60*60*24*1 + 60);
+        $manualplugin->enrol_user($instance4, $user6->id, $studentrole->id, 0, $now + 60*60*24*1 - 60*60);
+
+        // The notification is sent out in fixed order first individual users,
+        // then summary per course by enrolid, user lastname, etc.
+        $this->assertGreaterThan($instance1->id, $instance2->id);
+        $this->assertGreaterThan($instance2->id, $instance3->id);
+
+        $sink = $this->redirectMessages();
+
+        $manualplugin->send_expiry_notifications($trace);
+
+        $messages = $sink->get_messages();
+
+        $this->assertEquals(2+1 + 1+1 + 1 + 0, count($messages));
+
+        // First individual notifications from course1.
+        $this->assertEquals($user3->id, $messages[0]->useridto);
+        $this->assertEquals($user8->id, $messages[0]->useridfrom);
+        $this->assertContains('xcourse1', $messages[0]->fullmessagehtml);
+
+        $this->assertEquals($user4->id, $messages[1]->useridto);
+        $this->assertEquals($user8->id, $messages[1]->useridfrom);
+        $this->assertContains('xcourse1', $messages[1]->fullmessagehtml);
+
+        // Then summary for course1.
+        $this->assertEquals($user8->id, $messages[2]->useridto);
+        $this->assertEquals($admin->id, $messages[2]->useridfrom);
+        $this->assertContains('xcourse1', $messages[2]->fullmessagehtml);
+        $this->assertNotContains('xuser1', $messages[2]->fullmessagehtml);
+        $this->assertNotContains('xuser2', $messages[2]->fullmessagehtml);
+        $this->assertContains('xuser3', $messages[2]->fullmessagehtml);
+        $this->assertContains('xuser4', $messages[2]->fullmessagehtml);
+        $this->assertContains('xuser5', $messages[2]->fullmessagehtml);
+        $this->assertNotContains('xuser6', $messages[2]->fullmessagehtml);
+
+        // First individual notifications from course2.
+        $this->assertEquals($user3->id, $messages[3]->useridto);
+        $this->assertEquals($admin->id, $messages[3]->useridfrom);
+        $this->assertContains('xcourse2', $messages[3]->fullmessagehtml);
+
+        // Then summary for course2.
+        $this->assertEquals($admin->id, $messages[4]->useridto);
+        $this->assertEquals($admin->id, $messages[4]->useridfrom);
+        $this->assertContains('xcourse2', $messages[4]->fullmessagehtml);
+        $this->assertNotContains('xuser1', $messages[4]->fullmessagehtml);
+        $this->assertNotContains('xuser2', $messages[4]->fullmessagehtml);
+        $this->assertContains('xuser3', $messages[4]->fullmessagehtml);
+        $this->assertNotContains('xuser4', $messages[4]->fullmessagehtml);
+        $this->assertNotContains('xuser5', $messages[4]->fullmessagehtml);
+        $this->assertNotContains('xuser6', $messages[4]->fullmessagehtml);
+
+        // Only summary in course3.
+        $this->assertEquals($user1->id, $messages[5]->useridto);
+        $this->assertEquals($admin->id, $messages[5]->useridfrom);
+        $this->assertContains('xcourse3', $messages[5]->fullmessagehtml);
+        $this->assertNotContains('xuser1', $messages[5]->fullmessagehtml);
+        $this->assertNotContains('xuser2', $messages[5]->fullmessagehtml);
+        $this->assertContains('xuser3', $messages[5]->fullmessagehtml);
+        $this->assertNotContains('xuser4', $messages[5]->fullmessagehtml);
+        $this->assertNotContains('xuser5', $messages[5]->fullmessagehtml);
+        $this->assertNotContains('xuser6', $messages[5]->fullmessagehtml);
+
+
+        // Make sure that notifications are not repeated.
+        $sink->clear();
+
+        $manualplugin->send_expiry_notifications($trace);
+        $this->assertEquals(0, $sink->count());
+
+        // use invalid notification hour to verify that before the hour the notifications are not sent.
+        $manualplugin->set_config('expirynotifylast', time() - 60*60*24);
+        $manualplugin->set_config('expirynotifyhour', '24');
+
+        $manualplugin->send_expiry_notifications($trace);
+        $this->assertEquals(0, $sink->count());
+
+        $manualplugin->set_config('expirynotifyhour', '0');
+        $manualplugin->send_expiry_notifications($trace);
+        $this->assertEquals(6, $sink->count());
     }
 }

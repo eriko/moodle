@@ -104,6 +104,19 @@ function xmldb_qtype_essay_upgrade($oldversion) {
     // Put any upgrade step following this
 
 
+    // Moodle v2.4.0 release upgrade line
+    // Put any upgrade step following this
+
+    if ($oldversion < 2013011800) {
+        // Then we delete the old question_answers rows for essay questions.
+        $DB->delete_records_select('qtype_essay_options', "NOT EXISTS (
+                SELECT 1 FROM {question} WHERE qtype = 'essay' AND
+                    {question}.id = {qtype_essay_options}.questionid)");
+
+        // Essay savepoint reached.
+        upgrade_plugin_savepoint(true, 2013011800, 'qtype', 'essay');
+    }
+
     return true;
 }
 

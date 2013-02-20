@@ -233,7 +233,10 @@ function install_generate_configphp($database, $cfg) {
     }
     $configphp .= '$CFG->directorypermissions = ' . $chmod . ';' . PHP_EOL . PHP_EOL;
 
-    $configphp .= '$CFG->passwordsaltmain = '.var_export(complex_random_string(), true) . ';' . PHP_EOL . PHP_EOL;
+    // A site-wide salt is only needed if bcrypt is not properly supported by the current version of PHP.
+    if (password_compat_not_supported()) {
+        $configphp .= '$CFG->passwordsaltmain = '.var_export(complex_random_string(), true) . ';' . PHP_EOL . PHP_EOL;
+    }
 
     $configphp .= 'require_once(dirname(__FILE__) . \'/lib/setup.php\');' . PHP_EOL . PHP_EOL;
     $configphp .= '// There is no php closing tag in this file,' . PHP_EOL;
@@ -253,6 +256,7 @@ function install_print_help_page($help) {
     global $CFG, $OUTPUT; //TODO: MUST NOT USE $OUTPUT HERE!!!
 
     @header('Content-Type: text/html; charset=UTF-8');
+    @header('X-UA-Compatible: IE=edge');
     @header('Cache-Control: no-store, no-cache, must-revalidate');
     @header('Cache-Control: post-check=0, pre-check=0', false);
     @header('Pragma: no-cache');
@@ -299,6 +303,7 @@ function install_print_header($config, $stagename, $heading, $stagetext) {
     global $CFG;
 
     @header('Content-Type: text/html; charset=UTF-8');
+    @header('X-UA-Compatible: IE=edge');
     @header('Cache-Control: no-store, no-cache, must-revalidate');
     @header('Cache-Control: post-check=0, pre-check=0', false);
     @header('Pragma: no-cache');
@@ -476,9 +481,7 @@ function install_cli_database(array $options, $interactive) {
     upgrade_finished();
 
     // log in as admin - we need do anything when applying defaults
-    $admins = get_admins();
-    $admin = reset($admins);
-    session_set_user($admin);
+    session_set_user(get_admin());
 
     // apply all default settings, do it twice to fill all defaults - some settings depend on other setting
     admin_apply_default_settings(NULL, true);

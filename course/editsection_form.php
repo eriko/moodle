@@ -5,7 +5,15 @@ if (!defined('MOODLE_INTERNAL')) {
 }
 
 require_once($CFG->libdir.'/formslib.php');
+require_once($CFG->libdir.'/filelib.php');
+require_once($CFG->libdir.'/completionlib.php');
+require_once($CFG->libdir.'/gradelib.php');
 
+/**
+ * Default form for editing course section
+ *
+ * Course format plugins may specify different editing form to use
+ */
 class editsection_form extends moodleform {
 
     function definition() {
@@ -27,6 +35,13 @@ class editsection_form extends moodleform {
 
         $mform->addElement('hidden', 'id');
         $mform->setType('id', PARAM_INT);
+
+        // additional fields that course format has defined
+        $courseformat = course_get_format($course);
+        $formatoptions = $courseformat->section_format_options(true);
+        if (!empty($formatoptions)) {
+            $elements = $courseformat->create_edit_form_elements($mform, true);
+        }
 
         $mform->_registerCancelButton('cancel');
     }
@@ -56,11 +71,19 @@ class editsection_form extends moodleform {
                 $mform->addHelpButton('groupingid', 'groupingsection', 'group');
             }
 
-            // Date and time conditions
+            // Available from/to defaults to midnight because then the display
+            // will be nicer where it tells users when they can access it (it
+            // shows only the date and not time).
+            $date = usergetdate(time());
+            $midnight = make_timestamp($date['year'], $date['mon'], $date['mday']);
+
+            // Date and time conditions.
             $mform->addElement('date_time_selector', 'availablefrom',
-                    get_string('availablefrom', 'condition'), array('optional' => true));
+                    get_string('availablefrom', 'condition'),
+                    array('optional' => true, 'defaulttime' => $midnight));
             $mform->addElement('date_time_selector', 'availableuntil',
-                    get_string('availableuntil', 'condition'), array('optional' => true));
+                    get_string('availableuntil', 'condition'),
+                    array('optional' => true, 'defaulttime' => $midnight));
 
             // Conditions based on grades
             $gradeoptions = array();
@@ -195,8 +218,6 @@ class editsection_form extends moodleform {
                 CONDITION_STUDENTVIEW_HIDE => get_string('showavailabilitysection_hide', 'condition'));
             $mform->addElement('select', 'showavailability',
                     get_string('showavailabilitysection', 'condition'), $showhide);
-
-            $mform->setDefault('showavailability', $this->_customdata['showavailability']);
         }
 
         $this->add_action_buttons();
@@ -207,8 +228,39 @@ class editsection_form extends moodleform {
         // Conditions: Don't let them set dates which make no sense
         if (array_key_exists('availablefrom', $data) &&
                 $data['availablefrom'] && $data['availableuntil'] &&
-                $data['availablefrom'] > $data['availableuntil']) {
+                $data['availablefrom'] >= $data['availableuntil']) {
             $errors['availablefrom'] = get_string('badavailabledates', 'condition');
+        }
+
+        // Conditions: Verify that the grade conditions are numbers, and make sense.
+        if (array_key_exists('conditiongradegroup', $data)) {
+            foreach ($data['conditiongradegroup'] as $i => $gradedata) {
+                if ($gradedata['conditiongrademin'] !== '' &&
+                        !is_numeric(unformat_float($gradedata['conditiongrademin']))) {
+                    $errors["conditiongradegroup[{$i}]"] = get_string('gradesmustbenumeric', 'condition');
+                    continue;
+                }
+                if ($gradedata['conditiongrademax'] !== '' &&
+                        !is_numeric(unformat_float($gradedata['conditiongrademax']))) {
+                    $errors["conditiongradegroup[{$i}]"] = get_string('gradesmustbenumeric', 'condition');
+                    continue;
+                }
+                if ($gradedata['conditiongrademin'] !== '' && $gradedata['conditiongrademax'] !== '' &&
+                        unformat_float($gradedata['conditiongrademax']) <= unformat_float($gradedata['conditiongrademin'])) {
+                    $errors["conditiongradegroup[{$i}]"] = get_string('badgradelimits', 'condition');
+                    continue;
+                }
+                if ($gradedata['conditiongrademin'] === '' && $gradedata['conditiongrademax'] === '' &&
+                        $gradedata['conditiongradeitemid']) {
+                    $errors["conditiongradegroup[{$i}]"] = get_string('gradeitembutnolimits', 'condition');
+                    continue;
+                }
+                if (($gradedata['conditiongrademin'] !== '' || $gradedata['conditiongrademax'] !== '') &&
+                        !$gradedata['conditiongradeitemid']) {
+                    $errors["conditiongradegroup[{$i}]"] = get_string('gradelimitsbutnoitem', 'condition');
+                    continue;
+                }
+            }
         }
 
         // Conditions: Verify that the user profile field has not been declared more than once
@@ -231,5 +283,48 @@ class editsection_form extends moodleform {
         }
 
         return $errors;
+    }
+
+    /**
+     * Load in existing data as form defaults
+     *
+     * @param stdClass|array $default_values object or array of default values
+     */
+    function set_data($default_values) {
+        if (!is_object($default_values)) {
+            // we need object for file_prepare_standard_editor
+            $default_values = (object)$default_values;
+        }
+        $editoroptions = $this->_customdata['editoroptions'];
+        $default_values = file_prepare_standard_editor($default_values, 'summary', $editoroptions,
+                $editoroptions['context'], 'course', 'section', $default_values->id);
+        $default_values->usedefaultname = (is_null($default_values->name));
+        parent::set_data($default_values);
+    }
+
+    /**
+     * Return submitted data if properly submitted or returns NULL if validation fails or
+     * if there is no submitted data.
+     *
+     * @return object submitted data; NULL if not valid or not submitted or cancelled
+     */
+    function get_data() {
+        $data = parent::get_data();
+        if ($data !== null) {
+            $editoroptions = $this->_customdata['editoroptions'];
+            if (!empty($data->usedefaultname)) {
+                $data->name = null;
+            }
+            $data = file_postupdate_standard_editor($data, 'summary', $editoroptions,
+                    $editoroptions['context'], 'course', 'section', $data->id);
+            $course = $this->_customdata['course'];
+            foreach (course_get_format($course)->section_format_options() as $option => $unused) {
+                // fix issue with unset checkboxes not being returned at all
+                if (!isset($data->$option)) {
+                    $data->$option = null;
+                }
+            }
+        }
+        return $data;
     }
 }

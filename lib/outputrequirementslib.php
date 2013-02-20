@@ -264,6 +264,7 @@ class page_requirements_manager {
             'slasharguments'      => (int)(!empty($CFG->slasharguments)),
             'theme'               => $page->theme->name,
             'jsrev'               => ((empty($CFG->cachejs) or empty($CFG->jsrev)) ? -1 : $CFG->jsrev),
+            'svgicons'            => $page->theme->use_svg_icons()
         );
         if (debugging('', DEBUG_DEVELOPER)) {
             $this->M_cfg['developerdebug'] = true;
@@ -280,6 +281,22 @@ class page_requirements_manager {
         // Alter links in top frame to break out of frames.
         if ($page->pagelayout === 'frametop') {
             $this->js_init_call('M.util.init_frametop');
+        }
+
+        // Include block drag/drop if editing is on
+        if ($page->user_is_editing()) {
+            $params = array(
+                'courseid' => $page->course->id,
+                'pagetype' => $page->pagetype,
+                'pagelayout' => $page->pagelayout,
+                'subpage' => $page->subpage,
+                'regions' => $page->blocks->get_regions(),
+                'contextid' => $page->context->id,
+            );
+            if (!empty($page->cm->id)) {
+                $params['cmid'] = $page->cm->id;
+            }
+            $page->requires->yui_module('moodle-core-blocks', 'M.core_blocks.init_dragdrop', array($params), null, true);
         }
     }
 
@@ -406,7 +423,7 @@ class page_requirements_manager {
                     $module = array('name'     => 'core_dock',
                                     'fullpath' => '/blocks/dock.js',
                                     'requires' => array('base', 'node', 'event-custom', 'event-mouseenter', 'event-resize'),
-                                    'strings' => array(array('addtodock', 'block'),array('undockitem', 'block'),array('undockall', 'block'),array('thisdirectionvertical', 'langconfig')));
+                                    'strings' => array(array('addtodock', 'block'),array('undockitem', 'block'),array('undockblock', 'block'),array('undockall', 'block'),array('thisdirectionvertical', 'langconfig'),array('hidedockpanel', 'block'),array('hidepanel', 'block')));
                     break;
                 case 'core_message':
                     $module = array('name'     => 'core_message',
@@ -432,7 +449,10 @@ class page_requirements_manager {
                     $module = array('name'     => 'core_dndupload',
                                     'fullpath' => '/lib/form/dndupload.js',
                                     'requires' => array('node', 'event', 'json', 'core_filepicker'),
-                                    'strings'  => array(array('uploadformlimit', 'moodle'), array('droptoupload', 'moodle'), array('maxfilesreached', 'moodle'), array('dndenabled_inbox', 'moodle'), array('fileexists', 'moodle')));
+                                    'strings'  => array(array('uploadformlimit', 'moodle'), array('droptoupload', 'moodle'), array('maxfilesreached', 'moodle'),
+                                                        array('dndenabled_inbox', 'moodle'), array('fileexists', 'moodle'), array('maxbytesforfile', 'moodle'),
+                                                        array('maxareabytesreached', 'moodle')
+                                                    ));
                     break;
             }
 
@@ -676,8 +696,12 @@ class page_requirements_manager {
      * @param string $galleryversion The gallery version to use
      * @param bool $ondomready
      */
-    public function yui_module($modules, $function, array $arguments = null, $galleryversion = '2010.04.08-12-35', $ondomready = false) {
+    public function yui_module($modules, $function, array $arguments = null, $galleryversion = null, $ondomready = false) {
         global $CFG;
+
+        if (!$galleryversion) {
+            $galleryversion = '2010.04.08-12-35';
+        }
 
         if (!is_array($modules)) {
             $modules = array($modules);
@@ -943,13 +967,16 @@ class page_requirements_manager {
                      .$CFG->yui3version.'/build/cssfonts/fonts-min.css&amp;'
                      .$CFG->yui3version.'/build/cssgrids/grids-min.css&amp;'
                      .$CFG->yui3version.'/build/cssbase/base-min.css" />';
-            $code .= '<script type="text/javascript" src="'.$this->yui3loader->comboBase.$CFG->yui3version.'/build/yui/yui-min.js"></script>';
+            $code .= '<script type="text/javascript" src="'.$this->yui3loader->comboBase
+                     .$CFG->yui3version.'/build/simpleyui/simpleyui-min.js&amp;'
+                     .$CFG->yui3version.'/build/loader/loader-min.js"></script>';
         } else {
             $code .= '<link rel="stylesheet" type="text/css" href="'.$this->yui3loader->base.'cssreset/reset-min.css" />';
             $code .= '<link rel="stylesheet" type="text/css" href="'.$this->yui3loader->base.'cssfonts/fonts-min.css" />';
             $code .= '<link rel="stylesheet" type="text/css" href="'.$this->yui3loader->base.'cssgrids/grids-min.css" />';
             $code .= '<link rel="stylesheet" type="text/css" href="'.$this->yui3loader->base.'cssbase/base-min.css" />';
-            $code .= '<script type="text/javascript" src="'.$this->yui3loader->base.'yui/yui-min.js"></script>';
+            $code .= '<script type="text/javascript" src="'.$this->yui3loader->base.'simpleyui/simpleyui-min.js"></script>';
+            $code .= '<script type="text/javascript" src="'.$this->yui3loader->base.'loader/loader-min.js"></script>';
         }
 
 

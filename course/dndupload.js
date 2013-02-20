@@ -435,39 +435,43 @@ M.course_dndupload = {
      * @param section the DOM element reperesenting the course section
      * @return DOM element containing the new item
      */
-    add_resource_element: function(name, section) {
+    add_resource_element: function(name, section, module) {
         var modsel = this.get_mods_element(section);
 
         var resel = {
             parent: modsel,
             li: document.createElement('li'),
             div: document.createElement('div'),
+            indentdiv: document.createElement('div'),
             a: document.createElement('a'),
             icon: document.createElement('img'),
             namespan: document.createElement('span'),
+            groupingspan: document.createElement('span'),
             progressouter: document.createElement('span'),
             progress: document.createElement('span')
         };
 
-        resel.li.className = 'activity resource modtype_resource';
+        resel.li.className = 'activity ' + module + ' modtype_' + module;
 
-        resel.div.className = 'mod-indent';
-        resel.li.appendChild(resel.div);
+        resel.indentdiv.className = 'mod-indent';
+        resel.li.appendChild(resel.indentdiv);
+
+        resel.div.className = 'activityinstance';
+        resel.indentdiv.appendChild(resel.div);
 
         resel.a.href = '#';
         resel.div.appendChild(resel.a);
 
         resel.icon.src = M.util.image_url('i/ajaxloader');
-        resel.icon.className = 'activityicon';
+        resel.icon.className = 'activityicon iconlarge';
         resel.a.appendChild(resel.icon);
-
-        resel.a.appendChild(document.createTextNode(' '));
 
         resel.namespan.className = 'instancename';
         resel.namespan.innerHTML = name;
         resel.a.appendChild(resel.namespan);
 
-        resel.div.appendChild(document.createTextNode(' '));
+        resel.groupingspan.className = 'groupinglabel';
+        resel.div.appendChild(resel.groupingspan);
 
         resel.progressouter.className = 'dndupload-progress-outer';
         resel.progress.className = 'dndupload-progress-inner';
@@ -520,6 +524,7 @@ M.course_dndupload = {
         preview.li.appendChild(preview.div);
 
         preview.icon.src = M.util.image_url('t/addfile');
+        preview.icon.className = 'icon';
         preview.div.appendChild(preview.icon);
 
         preview.div.appendChild(document.createTextNode(' '));
@@ -702,7 +707,7 @@ M.course_dndupload = {
         }
 
         // Add the file to the display
-        var resel = this.add_resource_element(file.name, section);
+        var resel = this.add_resource_element(file.name, section, module);
 
         // Update the progress bar as the file is uploaded
         xhr.upload.addEventListener('progress', function(e) {
@@ -721,20 +726,37 @@ M.course_dndupload = {
                     if (result) {
                         if (result.error == 0) {
                             // All OK - update the dummy element
-                            resel.icon.src = result.icon;
-                            resel.a.href = result.link;
-                            resel.namespan.innerHTML = result.name;
-                            resel.div.removeChild(resel.progressouter);
+                            if (result.content) {
+                                // A label
+                                resel.indentdiv.innerHTML = '<div class="activityinstance" ></div>' + result.content + result.commands;
+                            } else {
+                                // Not a label
+                                resel.icon.src = result.icon;
+                                resel.a.href = result.link;
+                                resel.namespan.innerHTML = result.name;
+
+                                if (!parseInt(result.visible, 10)) {
+                                    resel.a.className = 'dimmed';
+                                }
+
+                                if (result.groupingname) {
+                                    resel.groupingspan.innerHTML = '(' + result.groupingname + ')';
+                                } else {
+                                    resel.div.removeChild(resel.groupingspan);
+                                }
+
+                                resel.div.removeChild(resel.progressouter);
+                                resel.indentdiv.innerHTML += result.commands;
+                                if (result.onclick) {
+                                    resel.a.onclick = result.onclick;
+                                }
+                                if (self.Y.UA.gecko > 0) {
+                                    // Fix a Firefox bug which makes sites with a '~' in their wwwroot
+                                    // log the user out when clicking on the link (before refreshing the page).
+                                    resel.div.innerHTML = unescape(resel.div.innerHTML);
+                                }
+                            }
                             resel.li.id = result.elementid;
-                            resel.div.innerHTML += result.commands;
-                            if (result.onclick) {
-                                resel.a.onclick = result.onclick;
-                            }
-                            if (self.Y.UA.gecko > 0) {
-                                // Fix a Firefox bug which makes sites with a '~' in their wwwroot
-                                // log the user out when clicking on the link (before refreshing the page).
-                                resel.div.innerHTML = unescape(resel.div.innerHTML);
-                            }
                             self.add_editing(result.elementid);
                         } else {
                             // Error - remove the dummy element
@@ -890,7 +912,7 @@ M.course_dndupload = {
         var self = this;
 
         // Add the item to the display
-        var resel = this.add_resource_element(name, section);
+        var resel = this.add_resource_element(name, section, module);
 
         // Wait for the AJAX call to complete, then update the
         // dummy element with the returned details
@@ -901,20 +923,37 @@ M.course_dndupload = {
                     if (result) {
                         if (result.error == 0) {
                             // All OK - update the dummy element
-                            resel.icon.src = result.icon;
-                            resel.a.href = result.link;
-                            resel.namespan.innerHTML = result.name;
-                            resel.div.removeChild(resel.progressouter);
+                            if (result.content) {
+                                // A label
+                                resel.indentdiv.innerHTML = '<div class="activityinstance" ></div>' + result.content + result.commands;
+                            } else {
+                                // Not a label
+                                resel.icon.src = result.icon;
+                                resel.a.href = result.link;
+                                resel.namespan.innerHTML = result.name;
+
+                                if (!parseInt(result.visible, 10)) {
+                                    resel.a.className = 'dimmed';
+                                }
+
+                                if (result.groupingname) {
+                                    resel.groupingspan.innerHTML = '(' + result.groupingname + ')';
+                                } else {
+                                    resel.div.removeChild(resel.groupingspan);
+                                }
+
+                                resel.div.removeChild(resel.progressouter);
+                                resel.div.innerHTML += result.commands;
+                                if (result.onclick) {
+                                    resel.a.onclick = result.onclick;
+                                }
+                                if (self.Y.UA.gecko > 0) {
+                                    // Fix a Firefox bug which makes sites with a '~' in their wwwroot
+                                    // log the user out when clicking on the link (before refreshing the page).
+                                    resel.div.innerHTML = unescape(resel.div.innerHTML);
+                                }
+                            }
                             resel.li.id = result.elementid;
-                            resel.div.innerHTML += result.commands;
-                            if (result.onclick) {
-                                resel.a.onclick = result.onclick;
-                            }
-                            if (self.Y.UA.gecko > 0) {
-                                // Fix a Firefox bug which makes sites with a '~' in their wwwroot
-                                // log the user out when clicking on the link (before refreshing the page).
-                                resel.div.innerHTML = unescape(resel.div.innerHTML);
-                            }
                             self.add_editing(result.elementid, sectionnumber);
                         } else {
                             // Error - remove the dummy element

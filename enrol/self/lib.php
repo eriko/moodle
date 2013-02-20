@@ -29,6 +29,9 @@
  */
 class enrol_self_plugin extends enrol_plugin {
 
+    protected $lasternoller = null;
+    protected $lasternollerinstanceid = 0;
+
     /**
      * Returns optional enrolment information icons.
      *
@@ -45,6 +48,10 @@ class enrol_self_plugin extends enrol_plugin {
         $key = false;
         $nokey = false;
         foreach ($instances as $instance) {
+            if (!$instance->customint6) {
+                // New enrols not allowed.
+                continue;
+            }
             if ($instance->password or $instance->customint1) {
                 $key = true;
             } else {
@@ -104,6 +111,12 @@ class enrol_self_plugin extends enrol_plugin {
         if ($instance->status != ENROL_INSTANCE_ENABLED) {
             return false;
         }
+
+        if (!$instance->customint6) {
+            // New enrols not allowed.
+            return false;
+        }
+
         if ($instance->customint5) {
             require_once("$CFG->dirroot/cohort/lib.php");
             return cohort_is_member($instance->customint5, $USER->id);
@@ -197,6 +210,11 @@ class enrol_self_plugin extends enrol_plugin {
             return null;
         }
 
+        if (!$instance->customint6) {
+            // New enrols not allowed.
+            return null;
+        }
+
         if ($instance->customint5) {
             require_once("$CFG->dirroot/cohort/lib.php");
             if (!cohort_is_member($instance->customint5, $USER->id)) {
@@ -261,20 +279,43 @@ class enrol_self_plugin extends enrol_plugin {
      * @return int id of new instance
      */
     public function add_default_instance($course) {
-        $fields = array('customint1'  => $this->get_config('groupkey'),
-                        'customint2'  => $this->get_config('longtimenosee'),
-                        'customint3'  => $this->get_config('maxenrolled'),
-                        'customint4'  => $this->get_config('sendcoursewelcomemessage'),
-                        'customint5'  => 0,
-                        'enrolperiod' => $this->get_config('enrolperiod', 0),
-                        'status'      => $this->get_config('status'),
-                        'roleid'      => $this->get_config('roleid', 0));
+        $fields = $this->get_instance_defaults();
 
         if ($this->get_config('requirepassword')) {
             $fields['password'] = generate_password(20);
         }
 
         return $this->add_instance($course, $fields);
+    }
+
+    /**
+     * Returns defaults for new instances.
+     * @return array
+     */
+    public function get_instance_defaults() {
+        $expirynotify = $this->get_config('expirynotify');
+        if ($expirynotify == 2) {
+            $expirynotify = 1;
+            $notifyall = 1;
+        } else {
+            $notifyall = 0;
+        }
+
+        $fields = array();
+        $fields['status']          = $this->get_config('status');
+        $fields['roleid']          = $this->get_config('roleid');
+        $fields['enrolperiod']     = $this->get_config('enrolperiod');
+        $fields['expirynotify']    = $expirynotify;
+        $fields['notifyall']       = $notifyall;
+        $fields['expirythreshold'] = $this->get_config('expirythreshold');
+        $fields['customint1']      = $this->get_config('groupkey');
+        $fields['customint2']      = $this->get_config('longtimenosee');
+        $fields['customint3']      = $this->get_config('maxenrolled');
+        $fields['customint4']      = $this->get_config('sendcoursewelcomemessage');
+        $fields['customint5']      = 0;
+        $fields['customint6']      = $this->get_config('newenrols');
+
+        return $fields;
     }
 
     /**
@@ -317,7 +358,8 @@ class enrol_self_plugin extends enrol_plugin {
         $rusers = array();
         if (!empty($CFG->coursecontact)) {
             $croles = explode(',', $CFG->coursecontact);
-            $rusers = get_role_users($croles, $context, true, '', 'r.sortorder ASC, u.lastname ASC');
+            list($sort, $sortparams) = users_order_by_sql('u');
+            $rusers = get_role_users($croles, $context, true, '', 'r.sortorder ASC, ' . $sort, null, '', '', '', '', $sortparams);
         }
         if ($rusers) {
             $contact = reset($rusers);
@@ -334,20 +376,23 @@ class enrol_self_plugin extends enrol_plugin {
      * @return void
      */
     public function cron() {
-        $this->sync(null, true);
+        $trace = new text_progress_trace();
+        $this->sync($trace, null);
+        $this->send_expiry_notifications($trace);
     }
 
     /**
      * Sync all meta course links.
      *
+     * @param progress_trace $trace
      * @param int $courseid one course, empty mean all
-     * @param bool $verbose verbose CLI output
      * @return int 0 means ok, 1 means error, 2 means plugin disabled
      */
-    public function sync($courseid = null, $verbose = false) {
+    public function sync(progress_trace $trace, $courseid = null) {
         global $DB;
 
         if (!enrol_is_enabled('self')) {
+            $trace->finished();
             return 2;
         }
 
@@ -355,9 +400,7 @@ class enrol_self_plugin extends enrol_plugin {
         @set_time_limit(0);
         raise_memory_limit(MEMORY_HUGE);
 
-        if ($verbose) {
-            mtrace('Verifying self-enrolments...');
-        }
+        $trace->output('Verifying self-enrolments...');
 
         $params = array('now'=>time(), 'useractive'=>ENROL_USER_ACTIVE, 'courselevel'=>CONTEXT_COURSE);
         $coursesql = "";
@@ -381,10 +424,8 @@ class enrol_self_plugin extends enrol_plugin {
             $userid = $instance->userid;
             unset($instance->userid);
             $this->unenrol_user($instance, $userid);
-            if ($verbose) {
-                $days = $instance->customint2 / 60*60*24;
-                mtrace("  unenrolling user $userid from course $instance->courseid as they have did not log in for at least $days days");
-            }
+            $days = $instance->customint2 / 60*60*24;
+            $trace->output("unenrolling user $userid from course $instance->courseid as they have did not log in for at least $days days", 1);
         }
         $rs->close();
 
@@ -400,81 +441,53 @@ class enrol_self_plugin extends enrol_plugin {
             $userid = $instance->userid;
             unset($instance->userid);
             $this->unenrol_user($instance, $userid);
-            if ($verbose) {
                 $days = $instance->customint2 / 60*60*24;
-                mtrace("  unenrolling user $userid from course $instance->courseid as they have did not access course for at least $days days");
-            }
+            $trace->output("unenrolling user $userid from course $instance->courseid as they have did not access course for at least $days days", 1);
         }
         $rs->close();
 
-        // Deal with expired accounts.
-        $action = $this->get_config('expiredaction', ENROL_EXT_REMOVED_KEEP);
+        $trace->output('...user self-enrolment updates finished.');
+        $trace->finished();
 
-        if ($action == ENROL_EXT_REMOVED_UNENROL) {
-            $instances = array();
-            $sql = "SELECT ue.*, e.courseid, c.id AS contextid
-                      FROM {user_enrolments} ue
-                      JOIN {enrol} e ON (e.id = ue.enrolid AND e.enrol = 'self')
-                      JOIN {context} c ON (c.instanceid = e.courseid AND c.contextlevel = :courselevel)
-                     WHERE ue.timeend > 0 AND ue.timeend < :now
-                           $coursesql";
-            $rs = $DB->get_recordset_sql($sql, $params);
-            foreach ($rs as $ue) {
-                if (empty($instances[$ue->enrolid])) {
-                    $instances[$ue->enrolid] = $DB->get_record('enrol', array('id'=>$ue->enrolid));
-                }
-                $instance = $instances[$ue->enrolid];
-                if ($instance->roleid) {
-                    role_unassign($instance->roleid, $ue->userid, $ue->contextid, '', 0);
-                }
-                $this->unenrol_user($instance, $ue->userid);
-                if ($verbose) {
-                    mtrace("  unenrolling expired user $ue->userid from course $instance->courseid");
-                }
-            }
-            $rs->close();
-            unset($instances);
-
-        } else if ($action == ENROL_EXT_REMOVED_SUSPENDNOROLES) {
-            $instances = array();
-            $sql = "SELECT ue.*, e.courseid, c.id AS contextid
-                      FROM {user_enrolments} ue
-                      JOIN {enrol} e ON (e.id = ue.enrolid AND e.enrol = 'self')
-                      JOIN {context} c ON (c.instanceid = e.courseid AND c.contextlevel = :courselevel)
-                     WHERE ue.timeend > 0 AND ue.timeend < :now
-                           AND ue.status = :useractive
-                           $coursesql";
-            $rs = $DB->get_recordset_sql($sql, $params);
-            foreach ($rs as $ue) {
-                if (empty($instances[$ue->enrolid])) {
-                    $instances[$ue->enrolid] = $DB->get_record('enrol', array('id'=>$ue->enrolid));
-                }
-                $instance = $instances[$ue->enrolid];
-                if (1 == $DB->count_records('role_assignments', array('userid'=>$ue->userid, 'contextid'=>$ue->contextid))) {
-                    role_unassign_all(array('userid'=>$ue->userid, 'contextid'=>$ue->contextid, 'component'=>'', 'itemid'=>0), true);
-                } else if ($instance->roleid) {
-                    role_unassign($instance->roleid, $ue->userid, $ue->contextid, '', 0);
-                }
-                $this->update_user_enrol($instance, $ue->userid, ENROL_USER_SUSPENDED);
-                if ($verbose) {
-                    mtrace("  suspending expired user $ue->userid in course $instance->courseid");
-                }
-            }
-            $rs->close();
-            unset($instances);
-
-        } else {
-            // ENROL_EXT_REMOVED_KEEP means no changes.
-        }
-
-        if ($verbose) {
-            mtrace('...user self-enrolment updates finished.');
-        }
+        $this->process_expirations($trace, $courseid);
 
         return 0;
     }
 
-     /**
+    /**
+     * Returns the user who is responsible for self enrolments in given instance.
+     *
+     * Usually it is the first editing teacher - the person with "highest authority"
+     * as defined by sort_by_roleassignment_authority() having 'enrol/self:manage'
+     * capability.
+     *
+     * @param int $instanceid enrolment instance id
+     * @return stdClass user record
+     */
+    protected function get_enroller($instanceid) {
+        global $DB;
+
+        if ($this->lasternollerinstanceid == $instanceid and $this->lasternoller) {
+            return $this->lasternoller;
+        }
+
+        $instance = $DB->get_record('enrol', array('id'=>$instanceid, 'enrol'=>$this->get_name()), '*', MUST_EXIST);
+        $context = context_course::instance($instance->courseid);
+
+        if ($users = get_enrolled_users($context, 'enrol/self:manage')) {
+            $users = sort_by_roleassignment_authority($users, $context);
+            $this->lasternoller = reset($users);
+            unset($users);
+        } else {
+            $this->lasternoller = parent::get_enroller($instanceid);
+        }
+
+        $this->lasternollerinstanceid = $instanceid;
+
+        return $this->lasternoller;
+    }
+
+    /**
      * Gets an array of the user enrolment actions.
      *
      * @param course_enrolment_manager $manager
@@ -492,7 +505,7 @@ class enrol_self_plugin extends enrol_plugin {
             $actions[] = new user_enrolment_action(new pix_icon('t/delete', ''), get_string('unenrol', 'enrol'), $url, array('class'=>'unenrollink', 'rel'=>$ue->id));
         }
         if ($this->allow_manage($instance) && has_capability("enrol/self:manage", $context)) {
-            $url = new moodle_url('/enrol/self/editenrolment.php', $params);
+            $url = new moodle_url('/enrol/editenrolment.php', $params);
             $actions[] = new user_enrolment_action(new pix_icon('t/edit', ''), get_string('edit'), $url, array('class'=>'editenrollink', 'rel'=>$ue->id));
         }
         return $actions;

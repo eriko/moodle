@@ -1141,6 +1141,15 @@ class quiz_question_bank_view extends question_bank_view {
                 'editaction', 'previewaction');
     }
 
+    /**
+     * Specify the column heading
+     *
+     * @return string Column name for the heading
+     */
+    protected function heading_column() {
+        return 'questionnametext';
+    }
+
     protected function default_sort() {
         $this->requiredcolumns['qtype'] = $this->knowncolumntypes['qtype'];
         $this->requiredcolumns['questionnametext'] = $this->knowncolumntypes['questionnametext'];
@@ -1308,7 +1317,7 @@ function quiz_print_status_bar($quiz) {
     if (empty($dates)) {
         $dates[] = get_string('alwaysavailable', 'quiz');
     }
-    $tooltip = implode(', ', $dates);;
+    $tooltip = implode(', ', $dates);
 
     // Brief summary on the page.
     if ($timenow < $quiz->timeopen) {

@@ -127,7 +127,8 @@
     $table->define_columns(array('name', 'instances', 'version', 'hideshow', 'undeletable', 'delete', 'settings'));
     $table->define_headers(array($strname, $strcourses, $strversion, $strhide.'/'.$strshow, $strprotecthdr, $strdelete, $strsettings));
     $table->define_baseurl($CFG->wwwroot.'/'.$CFG->admin.'/blocks.php');
-    $table->set_attribute('class', 'compatibleblockstable blockstable generaltable');
+    $table->set_attribute('class', 'admintable blockstable generaltable');
+    $table->set_attribute('id', 'compatibleblockstable');
     $table->setup();
     $tablerows = array();
 
@@ -201,10 +202,10 @@
             $visible = '';
         } else if ($blocks[$blockid]->visible) {
             $visible = '<a href="blocks.php?hide='.$blockid.'&amp;sesskey='.sesskey().'" title="'.$strhide.'">'.
-                       '<img src="'.$OUTPUT->pix_url('i/hide') . '" class="icon" alt="'.$strhide.'" /></a>';
+                       '<img src="'.$OUTPUT->pix_url('t/hide') . '" class="iconsmall" alt="'.$strhide.'" /></a>';
         } else {
             $visible = '<a href="blocks.php?show='.$blockid.'&amp;sesskey='.sesskey().'" title="'.$strshow.'">'.
-                       '<img src="'.$OUTPUT->pix_url('i/show') . '" class="icon" alt="'.$strshow.'" /></a>';
+                       '<img src="'.$OUTPUT->pix_url('t/show') . '" class="iconsmall" alt="'.$strshow.'" /></a>';
             $class = ' class="dimmed_text"'; // Leading space required!
         }
 
@@ -219,10 +220,10 @@
             $undeletable = '';
         } else if (in_array($blockname, $undeletableblocktypes)) {
             $undeletable = '<a href="blocks.php?unprotect='.$blockid.'&amp;sesskey='.sesskey().'" title="'.$strunprotect.'">'.
-                       '<img src="'.$OUTPUT->pix_url('t/unlock') . '" class="icon" alt="'.$strunprotect.'" /></a>';
+                       '<img src="'.$OUTPUT->pix_url('t/unlock') . '" class="iconsmall" alt="'.$strunprotect.'" /></a>';
         } else {
             $undeletable = '<a href="blocks.php?protect='.$blockid.'&amp;sesskey='.sesskey().'" title="'.$strprotect.'">'.
-                       '<img src="'.$OUTPUT->pix_url('t/unlock_gray') . '" class="icon" alt="'.$strprotect.'" /></a>';
+                       '<img src="'.$OUTPUT->pix_url('t/lock') . '" class="iconsmall" alt="'.$strprotect.'" /></a>';
         }
 
         $row = array(

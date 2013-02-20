@@ -269,10 +269,9 @@ function get_role_access($roleid) {
 
     $accessdata['ra']['/'.SYSCONTEXTID] = array((int)$roleid => (int)$roleid);
 
-    //
-    // Overrides for the role IN ANY CONTEXTS
-    // down to COURSE - not below -
-    //
+    // Overrides for the role IN ANY CONTEXTS down to COURSE - not below -.
+
+    /*
     $sql = "SELECT ctx.path,
                    rc.capability, rc.permission
               FROM {context} ctx
@@ -281,6 +280,19 @@ function get_role_access($roleid) {
                    ON (cctx.contextlevel = ".CONTEXT_COURSE." AND ctx.path LIKE ".$DB->sql_concat('cctx.path',"'/%'").")
              WHERE rc.roleid = ? AND cctx.id IS NULL";
     $params = array($roleid);
+    */
+
+    // Note: the commented out query is 100% accurate but slow, so let's cheat instead by hardcoding the blocks mess directly.
+
+    $sql = "SELECT COALESCE(ctx.path, bctx.path) AS path, rc.capability, rc.permission
+              FROM {role_capabilities} rc
+         LEFT JOIN {context} ctx ON (ctx.id = rc.contextid AND ctx.contextlevel <= ".CONTEXT_COURSE.")
+         LEFT JOIN ({context} bctx
+                    JOIN {block_instances} bi ON (bi.id = bctx.instanceid)
+                    JOIN {context} pctx ON (pctx.id = bi.parentcontextid AND pctx.contextlevel < ".CONTEXT_COURSE.")
+                   ) ON (bctx.id = rc.contextid AND bctx.contextlevel = ".CONTEXT_BLOCK.")
+             WHERE rc.roleid = :roleid AND (ctx.id IS NOT NULL OR bctx.id IS NOT NULL)";
+    $params = array('roleid'=>$roleid);
 
     // we need extra caching in CLI scripts and cron
     $rs = $DB->get_recordset_sql($sql, $params);
@@ -381,6 +393,7 @@ function has_capability($capability, context $context, $user = null, $doanything
     if (!isset($USER->id)) {
         // should never happen
         $USER->id = 0;
+        debugging('Capability check being performed on a user with no ID.', DEBUG_DEVELOPER);
     }
 
     // make sure there is a real user specified
@@ -2050,6 +2063,7 @@ function can_access_course(stdClass $course, $user = null, $withcapability = '',
     if (!isset($USER->id)) {
         // should never happen
         $USER->id = 0;
+        debugging('Course access check being performed on a user with no ID.', DEBUG_DEVELOPER);
     }
 
     // make sure there is a user specified
@@ -2309,7 +2323,7 @@ function get_enrolled_sql(context $context, $withcapability = '', $groupid = 0, 
  * @param int $limitnum return a subset comprising this many records (optional, required if $limitfrom is set).
  * @return array of user records
  */
-function get_enrolled_users(context $context, $withcapability = '', $groupid = 0, $userfields = 'u.*', $orderby = '', $limitfrom = 0, $limitnum = 0) {
+function get_enrolled_users(context $context, $withcapability = '', $groupid = 0, $userfields = 'u.*', $orderby = null, $limitfrom = 0, $limitnum = 0) {
     global $DB;
 
     list($esql, $params) = get_enrolled_sql($context, $withcapability, $groupid);
@@ -2321,7 +2335,9 @@ function get_enrolled_users(context $context, $withcapability = '', $groupid = 0
     if ($orderby) {
         $sql = "$sql ORDER BY $orderby";
     } else {
-        $sql = "$sql ORDER BY u.lastname ASC, u.firstname ASC";
+        list($sort, $sortparams) = users_order_by_sql('u');
+        $sql = "$sql ORDER BY $sort";
+        $params = array_merge($params, $sortparams);
     }
 
     return $DB->get_records_sql($sql, $params, $limitfrom, $limitnum);
@@ -2954,8 +2970,13 @@ function get_user_roles_in_course($userid, $courseid) {
 function user_can_assign(context $context, $targetroleid) {
     global $DB;
 
-    // first check if user has override capability
-    // if not return false;
+    // First check to see if the user is a site administrator.
+    if (is_siteadmin()) {
+        return true;
+    }
+
+    // Check if user has override capability.
+    // If not return false.
     if (!has_capability('moodle/role:assign', $context)) {
         return false;
     }
@@ -3841,18 +3862,19 @@ function sort_by_roleassignment_authority($users, context $context, $roles = arr
  * @param context $context
  * @param bool $parent if true, get list of users assigned in higher context too
  * @param string $fields fields from user (u.) , role assignment (ra) or role (r.)
- * @param string $sort sort from user (u.) , role assignment (ra) or role (r.)
- * @param bool $gethidden_ignored use enrolments instead
+ * @param string $sort sort from user (u.) , role assignment (ra.) or role (r.).
+ *      null => use default sort from users_order_by_sql.
+ * @param bool $all true means all, false means limit to enrolled users
  * @param string $group defaults to ''
  * @param mixed $limitfrom defaults to ''
  * @param mixed $limitnum defaults to ''
  * @param string $extrawheretest defaults to ''
- * @param string|array $whereparams defaults to ''
+ * @param array $whereorsortparams any paramter values used by $sort or $extrawheretest.
  * @return array
  */
 function get_role_users($roleid, context $context, $parent = false, $fields = '',
-        $sort = 'u.lastname, u.firstname', $gethidden_ignored = null, $group = '',
-        $limitfrom = '', $limitnum = '', $extrawheretest = '', $whereparams = array()) {
+        $sort = null, $all = true, $group = '',
+        $limitfrom = '', $limitnum = '', $extrawheretest = '', $whereorsortparams = array()) {
     global $DB;
 
     if (empty($fields)) {
@@ -3899,13 +3921,35 @@ function get_role_users($roleid, context $context, $parent = false, $fields = ''
 
     if ($extrawheretest) {
         $extrawheretest = ' AND ' . $extrawheretest;
-        $params = array_merge($params, $whereparams);
+    }
+
+    if ($whereorsortparams) {
+        $params = array_merge($params, $whereorsortparams);
+    }
+
+    if (!$sort) {
+        list($sort, $sortparams) = users_order_by_sql('u');
+        $params = array_merge($params, $sortparams);
+    }
+
+    if ($all === null) {
+        // Previously null was used to indicate that parameter was not used.
+        $all = true;
+    }
+    if (!$all and $coursecontext) {
+        // Do not use get_enrolled_sql() here for performance reasons.
+        $ejoin = "JOIN {user_enrolments} ue ON ue.userid = u.id
+                  JOIN {enrol} e ON (e.id = ue.enrolid AND e.courseid = :ecourseid)";
+        $params['ecourseid'] = $coursecontext->instanceid;
+    } else {
+        $ejoin = "";
     }
 
     $sql = "SELECT DISTINCT $fields, ra.roleid
               FROM {role_assignments} ra
               JOIN {user} u ON u.id = ra.userid
               JOIN {role} r ON ra.roleid = r.id
+            $ejoin
          LEFT JOIN {role_names} rn ON (rn.contextid = :coursecontext AND rn.roleid = r.id)
         $groupjoin
              WHERE (ra.contextid = :contextid $parentcontexts)

@@ -23,6 +23,10 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+if (!defined('MOODLE_INTERNAL')) {
+    die('Direct access to this script is forbidden.');    ///  It must be included from a Moodle page
+}
+
 /**
  *  These are read by the administration component to provide default values
  */
@@ -87,12 +91,53 @@ define('CALENDAR_EVENT_USER', 8);
 
 
 /**
+ * CALENDAR_IMPORT_FROM_FILE - import the calendar from a file
+ */
+define('CALENDAR_IMPORT_FROM_FILE', 0);
+
+/**
+ * CALENDAR_IMPORT_FROM_URL - import the calendar from a URL
+ */
+define('CALENDAR_IMPORT_FROM_URL',  1);
+
+/**
+ * CALENDAR_IMPORT_EVENT_UPDATED - imported event was updated
+ */
+define('CALENDAR_IMPORT_EVENT_UPDATED',  1);
+
+/**
+ * CALENDAR_IMPORT_EVENT_INSERTED - imported event was added by insert
+ */
+define('CALENDAR_IMPORT_EVENT_INSERTED', 2);
+
+/**
  * Return the days of the week
  *
  * @return array array of days
  */
 function calendar_get_days() {
     return array('sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday');
+}
+
+/**
+ * Get the subscription from a given id
+ *
+ * @since Moodle 2.5
+ * @param int $id id of the subscription
+ * @return stdClass Subscription record from DB
+ * @throws moodle_exception for an invalid id
+ */
+function calendar_get_subscription($id) {
+    global $DB;
+
+    $cache = cache::make('core', 'calendar_subscriptions');
+    $subscription = $cache->get($id);
+    if (empty($subscription)) {
+        $subscription = $DB->get_record('event_subscriptions', array('id' => $id), '*', MUST_EXIST);
+        // cache the data.
+        $cache->set($id, $subscription);
+    }
+    return $subscription;
 }
 
 /**
@@ -121,14 +166,16 @@ function calendar_get_starting_weekday() {
 /**
  * Generates the HTML for a miniature calendar
  *
- * @param array $courses list of course
+ * @param array $courses list of course to list events from
  * @param array $groups list of group
  * @param array $users user's info
  * @param int $cal_month calendar month in numeric, default is set to false
  * @param int $cal_year calendar month in numeric, default is set to false
+ * @param string $placement the place/page the calendar is set to appear - passed on the the controls function
+ * @param int $courseid id of the course the calendar is displayed on - passed on the the controls function
  * @return string $content return html table for mini calendar
  */
-function calendar_get_mini($courses, $groups, $users, $cal_month = false, $cal_year = false) {
+function calendar_get_mini($courses, $groups, $users, $cal_month = false, $cal_year = false, $placement = false, $courseid = false ) {
     global $CFG, $USER, $OUTPUT;
 
     $display = new stdClass;
@@ -235,6 +282,9 @@ function calendar_get_mini($courses, $groups, $users, $cal_month = false, $cal_y
 
     $summary = get_string('calendarheading', 'calendar', userdate(make_timestamp($y, $m), get_string('strftimemonthyear')));
     $content .= '<table class="minicalendar calendartable" summary="'.$summary.'">'; // Begin table
+    if (($placement !== false) && ($courseid  !== false)) {
+        $content .= '<caption>'. calendar_top_controls($placement, array('id' => $courseid, 'm' => $m, 'y' => $y)) .'</caption>';
+    }
     $content .= '<tr class="weekdays">'; // Header row: day names
 
     // Print out the names of the weekdays
@@ -290,7 +340,7 @@ function calendar_get_mini($courses, $groups, $users, $cal_month = false, $cal_y
                 if (!isset($events[$eventid])) {
                     continue;
                 }
-                $event = $events[$eventid];
+                $event = new calendar_event($events[$eventid]);
                 $popupalt  = '';
                 $component = 'moodle';
                 if(!empty($event->modulename)) {
@@ -298,28 +348,36 @@ function calendar_get_mini($courses, $groups, $users, $cal_month = false, $cal_y
                     $popupalt  = $event->modulename;
                     $component = $event->modulename;
                 } else if ($event->courseid == SITEID) {                                // Site event
-                    $popupicon = 'c/site';
+                    $popupicon = 'i/siteevent';
                 } else if ($event->courseid != 0 && $event->courseid != SITEID && $event->groupid == 0) {      // Course event
-                    $popupicon = 'c/course';
+                    $popupicon = 'i/courseevent';
                 } else if ($event->groupid) {                                      // Group event
-                    $popupicon = 'c/group';
+                    $popupicon = 'i/groupevent';
                 } else if ($event->userid) {                                       // User event
-                    $popupicon = 'c/user';
+                    $popupicon = 'i/userevent';
                 }
 
                 $dayhref->set_anchor('event_'.$event->id);
 
                 $popupcontent .= html_writer::start_tag('div');
                 $popupcontent .= $OUTPUT->pix_icon($popupicon, $popupalt, $component);
-                $popupcontent .= html_writer::link($dayhref, format_string($event->name, true));
+                $name = format_string($event->name, true);
+                // Show ical source if needed.
+                if (!empty($event->subscription) && $CFG->calendar_showicalsource) {
+                    $a = new stdClass();
+                    $a->name = $name;
+                    $a->source = $event->subscription->name;
+                    $name = get_string('namewithsource', 'calendar', $a);
+                }
+                $popupcontent .= html_writer::link($dayhref, $name);
                 $popupcontent .= html_writer::end_tag('div');
             }
 
             //Accessibility: functionality moved to calendar_get_popup.
             if($display->thismonth && $day == $d) {
-                $popup = calendar_get_popup(true, $events[$eventid]->timestart, $popupcontent);
+                $popupid = calendar_get_popup(true, $events[$eventid]->timestart, $popupcontent);
             } else {
-                $popup = calendar_get_popup(false, $events[$eventid]->timestart, $popupcontent);
+                $popupid = calendar_get_popup(false, $events[$eventid]->timestart, $popupcontent);
             }
 
             // Class and cell content
@@ -332,7 +390,7 @@ function calendar_get_mini($courses, $groups, $users, $cal_month = false, $cal_y
             } else if(isset($typesbyday[$day]['startuser'])) {
                 $class .= ' calendar_event_user';
             }
-            $cell = '<a href="'.(string)$dayhref.'" '.$popup.'>'.$day.'</a>';
+            $cell = html_writer::link($dayhref, $day, array('aria-controls' => $popupid.'_panel', 'id' => $popupid));
         } else {
             $cell = $day;
         }
@@ -374,8 +432,8 @@ function calendar_get_mini($courses, $groups, $users, $cal_month = false, $cal_y
 
             if(! isset($eventsbyday[$day])) {
                 $class .= ' eventnone';
-                $popup = calendar_get_popup(true, false);
-                $cell = '<a href="#" '.$popup.'>'.$day.'</a>';
+                $popupid = calendar_get_popup(true, false);
+                $cell = html_writer::link('#', $day, array('aria-controls' => $popupid.'_panel', 'id' => $popupid));
             }
             $cell = get_accesshide($today.' ').$cell;
         }
@@ -406,8 +464,8 @@ function calendar_get_mini($courses, $groups, $users, $cal_month = false, $cal_y
  *
  * @param bool $is_today false except when called on the current day.
  * @param mixed $event_timestart $events[$eventid]->timestart, OR false if there are no events.
- * @param string $popupcontent content for the popup window/layout
- * @return string of eventid for the calendar_tooltip popup window/layout
+ * @param string $popupcontent content for the popup window/layout.
+ * @return string eventid for the calendar_tooltip popup window/layout.
  */
 function calendar_get_popup($is_today, $event_timestart, $popupcontent='') {
     global $PAGE;
@@ -430,7 +488,7 @@ function calendar_get_popup($is_today, $event_timestart, $popupcontent='') {
     $PAGE->requires->yui_module('moodle-calendar-eventmanager', 'M.core_calendar.add_event', array(array('eventId'=>$id,'title'=>$popupcaption, 'content'=>$popupcontent)));
 
     $popupcount++;
-    return 'id="'.$id.'"';
+    return $id;
 }
 
 /**
@@ -583,14 +641,14 @@ function calendar_add_event_metadata($event) {
         $context = context_course::instance($module->course);
         $fullname = format_string($coursecache[$module->course]->fullname, true, array('context' => $context));
 
-        $event->icon = '<img height="16" width="16" src="'.$icon.'" alt="'.$eventtype.'" title="'.$modulename.'" style="vertical-align: middle;" />';
+        $event->icon = '<img src="'.$icon.'" alt="'.$eventtype.'" title="'.$modulename.'" class="icon" />';
         $event->referer = '<a href="'.$CFG->wwwroot.'/mod/'.$event->modulename.'/view.php?id='.$module->id.'">'.$event->name.'</a>';
         $event->courselink = '<a href="'.$CFG->wwwroot.'/course/view.php?id='.$module->course.'">'.$fullname.'</a>';
         $event->cmid = $module->id;
 
 
     } else if($event->courseid == SITEID) {                              // Site event
-        $event->icon = '<img height="16" width="16" src="'.$OUTPUT->pix_url('c/site') . '" alt="'.get_string('globalevent', 'calendar').'" style="vertical-align: middle;" />';
+        $event->icon = '<img src="'.$OUTPUT->pix_url('i/siteevent') . '" alt="'.get_string('globalevent', 'calendar').'" class="icon" />';
         $event->cssclass = 'calendar_event_global';
     } else if($event->courseid != 0 && $event->courseid != SITEID && $event->groupid == 0) {          // Course event
         calendar_get_course_cached($coursecache, $event->courseid);
@@ -598,14 +656,14 @@ function calendar_add_event_metadata($event) {
         $context = context_course::instance($event->courseid);
         $fullname = format_string($coursecache[$event->courseid]->fullname, true, array('context' => $context));
 
-        $event->icon = '<img height="16" width="16" src="'.$OUTPUT->pix_url('c/course') . '" alt="'.get_string('courseevent', 'calendar').'" style="vertical-align: middle;" />';
+        $event->icon = '<img src="'.$OUTPUT->pix_url('i/courseevent') . '" alt="'.get_string('courseevent', 'calendar').'" class="icon" />';
         $event->courselink = '<a href="'.$CFG->wwwroot.'/course/view.php?id='.$event->courseid.'">'.$fullname.'</a>';
         $event->cssclass = 'calendar_event_course';
     } else if ($event->groupid) {                                    // Group event
-        $event->icon = '<img height="16" width="16" src="'.$OUTPUT->pix_url('c/group') . '" alt="'.get_string('groupevent', 'calendar').'" style="vertical-align: middle;" />';
+        $event->icon = '<img src="'.$OUTPUT->pix_url('i/groupevent') . '" alt="'.get_string('groupevent', 'calendar').'" class="icon" />';
         $event->cssclass = 'calendar_event_group';
     } else if($event->userid) {                                      // User event
-        $event->icon = '<img height="16" width="16" src="'.$OUTPUT->pix_url('c/user') . '" alt="'.get_string('userevent', 'calendar').'" style="vertical-align: middle;" />';
+        $event->icon = '<img src="'.$OUTPUT->pix_url('i/userevent') . '" alt="'.get_string('userevent', 'calendar').'" class="icon" />';
         $event->cssclass = 'calendar_event_user';
     }
     return $event;
@@ -713,6 +771,25 @@ function calendar_get_events($tstart, $tend, $users, $groups, $courses, $withdur
     return $events;
 }
 
+/** Get calendar events by id
+ *
+ * @since Moodle 2.5
+ * @param array $eventids list of event ids
+ * @return array Array of event entries, empty array if nothing found
+ */
+
+function calendar_get_events_by_id($eventids) {
+    global $DB;
+
+    if (!is_array($eventids) || empty($eventids)) {
+        return array();
+    }
+    list($wheresql, $params) = $DB->get_in_or_equal($eventids);
+    $wheresql = "id $wheresql";
+
+    return $DB->get_records_select('event', $wheresql, $params);
+}
+
 /**
  * Get control options for Calendar
  *
@@ -721,7 +798,7 @@ function calendar_get_events($tstart, $tend, $users, $groups, $courses, $withdur
  * @return string $content return available control for the calender in html
  */
 function calendar_top_controls($type, $data) {
-    global $CFG;
+    global $CFG, $PAGE;
     $content = '';
     if(!isset($data['d'])) {
         $data['d'] = 1;
@@ -744,6 +821,7 @@ function calendar_top_controls($type, $data) {
 
     $data['m'] = $date['mon'];
     $data['y'] = $date['year'];
+    $urlbase = $PAGE->url;
 
     //Accessibility: calendar block controls, replaced <table> with <div>.
     //$nexttext = link_arrow_right(get_string('monthnext', 'access'), $url='', $accesshide=true);
@@ -753,8 +831,8 @@ function calendar_top_controls($type, $data) {
         case 'frontpage':
             list($prevmonth, $prevyear) = calendar_sub_month($data['m'], $data['y']);
             list($nextmonth, $nextyear) = calendar_add_month($data['m'], $data['y']);
-            $nextlink = calendar_get_link_next(get_string('monthnext', 'access'), 'index.php?', 0, $nextmonth, $nextyear, $accesshide=true);
-            $prevlink = calendar_get_link_previous(get_string('monthprev', 'access'), 'index.php?', 0, $prevmonth, $prevyear, true);
+            $nextlink = calendar_get_link_next(get_string('monthnext', 'access'), $urlbase, 0, $nextmonth, $nextyear, true);
+            $prevlink = calendar_get_link_previous(get_string('monthprev', 'access'), $urlbase, 0, $prevmonth, $prevyear, true);
 
             $calendarlink = calendar_get_link_href(new moodle_url(CALENDAR_URL.'view.php', array('view'=>'month')), 1, $data['m'], $data['y']);
             if (!empty($data['id'])) {
@@ -780,8 +858,8 @@ function calendar_top_controls($type, $data) {
         case 'course':
             list($prevmonth, $prevyear) = calendar_sub_month($data['m'], $data['y']);
             list($nextmonth, $nextyear) = calendar_add_month($data['m'], $data['y']);
-            $nextlink = calendar_get_link_next(get_string('monthnext', 'access'), 'view.php?id='.$data['id'].'&amp;', 0, $nextmonth, $nextyear, $accesshide=true);
-            $prevlink = calendar_get_link_previous(get_string('monthprev', 'access'), 'view.php?id='.$data['id'].'&amp;', 0, $prevmonth, $prevyear, true);
+            $nextlink = calendar_get_link_next(get_string('monthnext', 'access'), $urlbase, 0, $nextmonth, $nextyear, true);
+            $prevlink = calendar_get_link_previous(get_string('monthprev', 'access'), $urlbase, 0, $prevmonth, $prevyear, true);
 
             $calendarlink = calendar_get_link_href(new moodle_url(CALENDAR_URL.'view.php', array('view'=>'month')), 1, $data['m'], $data['y']);
             if (!empty($data['id'])) {
@@ -1037,7 +1115,7 @@ function calendar_get_link_href($linkbase, $d, $m, $y) {
         return '';
     }
     if (!($linkbase instanceof moodle_url)) {
-        $linkbase = new moodle_url();
+        $linkbase = new moodle_url($linkbase);
     }
     if (!empty($d)) {
         $linkbase->param('cal_d', $d);
@@ -1129,7 +1207,7 @@ function calendar_get_block_upcoming($events, $linkhref = NULL) {
             continue;
         }
         $events[$i] = calendar_add_event_metadata($events[$i]);
-        $content .= '<div class="event"><span class="icon c0">'.$events[$i]->icon.'</span> ';
+        $content .= '<div class="event"><span class="icon c0">'.$events[$i]->icon.'</span>';
         if (!empty($events[$i]->referer)) {
             // That's an activity event, so let's provide the hyperlink
             $content .= $events[$i]->referer;
@@ -1441,6 +1519,11 @@ function calendar_edit_event_allowed($event) {
         return false;
     }
 
+    // You cannot edit calendar subscription events presently.
+    if (!empty($event->subscriptionid)) {
+        return false;
+    }
+
     $sitecontext = context_system::instance();
     // if user has manageentries at site level, return true
     if (has_capability('moodle/calendar:manageentries', $sitecontext)) {
@@ -1724,11 +1807,19 @@ function calendar_get_allowed_types(&$allowed, $course = null) {
                 $allowed->courses = array($course->id => 1);
 
                 if ($course->groupmode != NOGROUPS || !$course->groupmodeforce) {
-                    $allowed->groups = groups_get_all_groups($course->id);
+                    if (has_capability('moodle/site:accessallgroups', $coursecontext)) {
+                        $allowed->groups = groups_get_all_groups($course->id);
+                    } else {
+                        $allowed->groups = groups_get_all_groups($course->id, $USER->id);
+                    }
                 }
             } else if (has_capability('moodle/calendar:managegroupentries', $coursecontext)) {
                 if($course->groupmode != NOGROUPS || !$course->groupmodeforce) {
-                    $allowed->groups = groups_get_all_groups($course->id);
+                    if (has_capability('moodle/site:accessallgroups', $coursecontext)) {
+                        $allowed->groups = groups_get_all_groups($course->id);
+                    } else {
+                        $allowed->groups = groups_get_all_groups($course->id, $USER->id);
+                    }
                 }
             }
         }
@@ -1873,6 +1964,10 @@ class calendar_event {
             $data->id = null;
         }
 
+        if (!empty($data->subscriptionid)) {
+            $data->subscription = calendar_get_subscription($data->subscriptionid);
+        }
+
         // Default to a user event
         if (empty($data->eventtype)) {
             $data->eventtype = 'user';
@@ -1978,7 +2073,7 @@ class calendar_event {
             $cm = get_coursemodule_from_instance($data->modulename, $data->instance, 0, false, MUST_EXIST);
             $context =  context_course::instance($cm->course);
         } else {
-            $context =  context_user::instance();
+            $context =  context_user::instance($data->userid);
         }
 
         return $context;
@@ -2083,24 +2178,22 @@ class calendar_event {
             if ($usingeditor) {
                 switch ($this->properties->eventtype) {
                     case 'user':
-                        $this->editorcontext = $this->properties->context;
                         $this->properties->courseid = 0;
+                        $this->properties->course = 0;
                         $this->properties->groupid = 0;
                         $this->properties->userid = $USER->id;
                         break;
                     case 'site':
-                        $this->editorcontext = $this->properties->context;
                         $this->properties->courseid = SITEID;
+                        $this->properties->course = SITEID;
                         $this->properties->groupid = 0;
                         $this->properties->userid = $USER->id;
                         break;
                     case 'course':
-                        $this->editorcontext = $this->properties->context;
                         $this->properties->groupid = 0;
                         $this->properties->userid = $USER->id;
                         break;
                     case 'group':
-                        $this->editorcontext = $this->properties->context;
                         $this->properties->userid = $USER->id;
                         break;
                     default:
@@ -2108,6 +2201,13 @@ class calendar_event {
                         // fail gracefully
                         $usingeditor = false;
                         break;
+                }
+
+                // If we are actually using the editor, we recalculate the context because some default values
+                // were set when calculate_context() was called from the constructor.
+                if ($usingeditor) {
+                    $this->properties->context = $this->calculate_context($this->properties);
+                    $this->editorcontext = $this->properties->context;
                 }
 
                 $editor = $this->properties->description;
@@ -2128,7 +2228,6 @@ class calendar_event {
                                                 $this->editoroptions,
                                                 $editor['text'],
                                                 $this->editoroptions['forcehttps']);
-
                 $DB->set_field('event', 'description', $this->properties->description, array('id'=>$this->properties->id));
             }
 
@@ -2431,9 +2530,15 @@ class calendar_event {
         global $CFG;
         static $extcalendarinc;
         if ($extcalendarinc === null) {
-            if (!empty($CFG->calendar) && file_exists($CFG->dirroot .'/calendar/'. $CFG->calendar .'/lib.php')) {
-                include_once($CFG->dirroot .'/calendar/'. $CFG->calendar .'/lib.php');
-                $extcalendarinc = true;
+            if (!empty($CFG->calendar)) {
+                if (is_readable($CFG->dirroot .'/calendar/'. $CFG->calendar .'/lib.php')) {
+                    include_once($CFG->dirroot .'/calendar/'. $CFG->calendar .'/lib.php');
+                    $extcalendarinc = true;
+                } else {
+                    debugging("Calendar lib file missing or not readable at /calendar/{$CFG->calendar}/lib.php.",
+                        DEBUG_DEVELOPER);
+                    $extcalendarinc = false;
+                }
             } else {
                 $extcalendarinc = false;
             }
@@ -2607,7 +2712,7 @@ class calendar_information {
         return make_timestamp($this->year, $this->month, $this->day+1);
     }
     /**
-     * Adds the pretend blocks for teh calendar
+     * Adds the pretend blocks for the calendar
      *
      * @param core_calendar_renderer $renderer
      * @param bool $showfilters display filters, false is set as default
@@ -2627,4 +2732,398 @@ class calendar_information {
         $block->title = get_string('monthlyview', 'calendar');
         $renderer->add_pretend_calendar_block($block, BLOCK_POS_RIGHT);
     }
+}
+
+/**
+ * Returns option list for the poll interval setting.
+ *
+ * @return array An array of poll interval options. Interval => description.
+ */
+function calendar_get_pollinterval_choices() {
+    return array(
+        '0' => new lang_string('never', 'calendar'),
+        '3600' => new lang_string('hourly', 'calendar'),
+        '86400' => new lang_string('daily', 'calendar'),
+        '604800' => new lang_string('weekly', 'calendar'),
+        '2628000' => new lang_string('monthly', 'calendar'),
+        '31536000' => new lang_string('annually', 'calendar')
+    );
+}
+
+/**
+ * Returns option list of available options for the calendar event type, given the current user and course.
+ *
+ * @param int $courseid The id of the course
+ * @return array An array containing the event types the user can create.
+ */
+function calendar_get_eventtype_choices($courseid) {
+    $choices = array();
+    $allowed = new stdClass;
+    calendar_get_allowed_types($allowed, $courseid);
+
+    if ($allowed->user) {
+        $choices['user'] = get_string('userevents', 'calendar');
+    }
+    if ($allowed->site) {
+        $choices['site'] = get_string('siteevents', 'calendar');
+    }
+    if (!empty($allowed->courses)) {
+        $choices['course'] = get_string('courseevents', 'calendar');
+    }
+    if (!empty($allowed->groups) and is_array($allowed->groups)) {
+        $choices['group'] = get_string('group');
+    }
+
+    return array($choices, $allowed->groups);
+}
+
+/**
+ * Add an iCalendar subscription to the database.
+ *
+ * @param stdClass $sub The subscription object (e.g. from the form)
+ * @return int The insert ID, if any.
+ */
+function calendar_add_subscription($sub) {
+    global $DB, $USER, $SITE;
+
+    if ($sub->eventtype === 'site') {
+        $sub->courseid = $SITE->id;
+    } else if ($sub->eventtype === 'group' || $sub->eventtype === 'course') {
+        $sub->courseid = $sub->course;
+    } else {
+        // User events.
+        $sub->courseid = 0;
+    }
+    $sub->userid = $USER->id;
+
+    // File subscriptions never update.
+    if (empty($sub->url)) {
+        $sub->pollinterval = 0;
+    }
+
+    $cache = cache::make('core', 'calendar_subscriptions');
+
+    if (!empty($sub->name)) {
+        if (empty($sub->id)) {
+            $id = $DB->insert_record('event_subscriptions', $sub);
+            // we cannot cache the data here because $sub is not complete.
+            return $id;
+        } else {
+            // Why are we doing an update here?
+            $DB->update_record('event_subscriptions', $sub);
+            // update cache.
+            $cache->set($sub->id, $sub);
+            return $sub->id;
+        }
+    } else {
+        print_error('errorbadsubscription', 'importcalendar');
+    }
+}
+
+/**
+ * Add an iCalendar event to the Moodle calendar.
+ *
+ * @param object $event The RFC-2445 iCalendar event
+ * @param int $courseid The course ID
+ * @param int $subscriptionid The iCalendar subscription ID
+ * @throws dml_exception A DML specific exception is thrown for invalid subscriptionids.
+ * @return int Code: 1=updated, 2=inserted, 0=error
+ */
+function calendar_add_icalendar_event($event, $courseid, $subscriptionid) {
+    global $DB, $USER;
+
+    // Probably an unsupported X-MICROSOFT-CDO-BUSYSTATUS event.
+    if (empty($event->properties['SUMMARY'])) {
+        return 0;
+    }
+
+    $name = $event->properties['SUMMARY'][0]->value;
+    $name = str_replace('\n', '<br />', $name);
+    $name = str_replace('\\', '', $name);
+    $name = preg_replace('/\s+/', ' ', $name);
+
+    $eventrecord = new stdClass;
+    $eventrecord->name = clean_param($name, PARAM_NOTAGS);
+
+    if (empty($event->properties['DESCRIPTION'][0]->value)) {
+        $description = '';
+    } else {
+        $description = $event->properties['DESCRIPTION'][0]->value;
+        $description = str_replace('\n', '<br />', $description);
+        $description = str_replace('\\', '', $description);
+        $description = preg_replace('/\s+/', ' ', $description);
+    }
+    $eventrecord->description = clean_param($description, PARAM_NOTAGS);
+
+    // Probably a repeating event with RRULE etc. TODO: skip for now.
+    if (empty($event->properties['DTSTART'][0]->value)) {
+        return 0;
+    }
+
+    $eventrecord->timestart = strtotime($event->properties['DTSTART'][0]->value);
+    if (empty($event->properties['DTEND'])) {
+        $eventrecord->timeduration = 3600; // one hour if no end time specified
+    } else {
+        $eventrecord->timeduration = strtotime($event->properties['DTEND'][0]->value) - $eventrecord->timestart;
+    }
+    $eventrecord->uuid = $event->properties['UID'][0]->value;
+    $eventrecord->timemodified = time();
+
+    // Add the iCal subscription details if required.
+    // We should never do anything with an event without a subscription reference.
+    $sub = calendar_get_subscription($subscriptionid);
+    $eventrecord->subscriptionid = $subscriptionid;
+    $eventrecord->userid = $sub->userid;
+    $eventrecord->groupid = $sub->groupid;
+    $eventrecord->courseid = $sub->courseid;
+    $eventrecord->eventtype = $sub->eventtype;
+
+    if ($updaterecord = $DB->get_record('event', array('uuid' => $eventrecord->uuid))) {
+        $eventrecord->id = $updaterecord->id;
+        if ($DB->update_record('event', $eventrecord)) {
+            return CALENDAR_IMPORT_EVENT_UPDATED;
+        } else {
+            return 0;
+        }
+    } else {
+        if ($DB->insert_record('event', $eventrecord)) {
+            return CALENDAR_IMPORT_EVENT_INSERTED;
+        } else {
+            return 0;
+        }
+    }
+}
+
+/**
+ * Update a subscription from the form data in one of the rows in the existing subscriptions table.
+ *
+ * @param int $subscriptionid The ID of the subscription we are acting upon.
+ * @param int $pollinterval The poll interval to use.
+ * @param int $action The action to be performed. One of update or remove.
+ * @throws dml_exception if invalid subscriptionid is provided
+ * @return string A log of the import progress, including errors
+ */
+function calendar_process_subscription_row($subscriptionid, $pollinterval, $action) {
+    global $DB;
+
+    // Fetch the subscription from the database making sure it exists.
+    $sub = calendar_get_subscription($subscriptionid);
+
+    $strupdate = get_string('update');
+    $strremove = get_string('remove');
+
+    // Update or remove the subscription, based on action.
+    switch ($action) {
+        case $strupdate:
+            // Skip updating file subscriptions.
+            if (empty($sub->url)) {
+                break;
+            }
+            $sub->pollinterval = $pollinterval;
+            $DB->update_record('event_subscriptions', $sub);
+
+            // update the cache.
+            $cache = cache::make('core', 'calendar_subscriptions');
+            $cache->set($sub->id, $sub);
+
+            // Update the events.
+            return "<p>".get_string('subscriptionupdated', 'calendar', $sub->name)."</p>" . calendar_update_subscription_events($subscriptionid);
+
+        case $strremove:
+            calendar_delete_subscription($subscriptionid);
+            return get_string('subscriptionremoved', 'calendar', $sub->name);
+            break;
+
+        default:
+            break;
+    }
+    return '';
+}
+
+/**
+ * Delete subscription and all related events.
+ *
+ * @param int|stdClass $subscription subscription or it's id, which needs to be deleted.
+ */
+function calendar_delete_subscription($subscription) {
+    global $DB;
+
+    if (is_object($subscription)) {
+        $subscription = $subscription->id;
+    }
+    // Delete subscription and related events.
+    $DB->delete_records('event', array('subscriptionid' => $subscription));
+    $DB->delete_records('event_subscriptions', array('id' => $subscription));
+    cache_helper::invalidate_by_definition('core', 'calendar_subscriptions', array(), array($subscription));
+}
+/**
+ * From a URL, fetch the calendar and return an iCalendar object.
+ *
+ * @param string $url The iCalendar URL
+ * @return stdClass The iCalendar object
+ */
+function calendar_get_icalendar($url) {
+    global $CFG;
+
+    require_once($CFG->libdir.'/filelib.php');
+
+    $curl = new curl();
+    $curl->setopt(array('CURLOPT_FOLLOWLOCATION' => 1, 'CURLOPT_MAXREDIRS' => 5));
+    $calendar = $curl->get($url);
+    // Http code validation should actually be the job of curl class.
+    if (!$calendar || $curl->info['http_code'] != 200 || !empty($curl->errorno)) {
+        throw new moodle_exception('errorinvalidicalurl', 'calendar');
+    }
+
+    $ical = new iCalendar();
+    $ical->unserialize($calendar);
+    return $ical;
+}
+
+/**
+ * Import events from an iCalendar object into a course calendar.
+ *
+ * @param stdClass $ical The iCalendar object.
+ * @param int $courseid The course ID for the calendar.
+ * @param int $subscriptionid The subscription ID.
+ * @return string A log of the import progress, including errors.
+ */
+function calendar_import_icalendar_events($ical, $courseid, $subscriptionid = null) {
+    global $DB;
+    $return = '';
+    $eventcount = 0;
+    $updatecount = 0;
+
+    // Large calendars take a while...
+    set_time_limit(300);
+
+    // Mark all events in a subscription with a zero timestamp.
+    if (!empty($subscriptionid)) {
+        $sql = "UPDATE {event} SET timemodified = :time WHERE subscriptionid = :id";
+        $DB->execute($sql, array('time' => 0, 'id' => $subscriptionid));
+    }
+    foreach ($ical->components['VEVENT'] as $event) {
+        $res = calendar_add_icalendar_event($event, $courseid, $subscriptionid);
+        switch ($res) {
+          case CALENDAR_IMPORT_EVENT_UPDATED:
+            $updatecount++;
+            break;
+          case CALENDAR_IMPORT_EVENT_INSERTED:
+            $eventcount++;
+            break;
+          case 0:
+            $return .= '<p>'.get_string('erroraddingevent', 'calendar').': '.(empty($event->properties['SUMMARY'])?'('.get_string('notitle', 'calendar').')':$event->properties['SUMMARY'][0]->value)." </p>\n";
+            break;
+        }
+    }
+    $return .= "<p> ".get_string('eventsimported', 'calendar', $eventcount)."</p>";
+    $return .= "<p> ".get_string('eventsupdated', 'calendar', $updatecount)."</p>";
+
+    // Delete remaining zero-marked events since they're not in remote calendar.
+    if (!empty($subscriptionid)) {
+        $deletecount = $DB->count_records('event', array('timemodified' => 0, 'subscriptionid' => $subscriptionid));
+        if (!empty($deletecount)) {
+            $sql = "DELETE FROM {event} WHERE timemodified = :time AND subscriptionid = :id";
+            $DB->execute($sql, array('time' => 0, 'id' => $subscriptionid));
+            $return .= "<p> ".get_string('eventsdeleted', 'calendar').": {$deletecount} </p>\n";
+        }
+    }
+
+    return $return;
+}
+
+/**
+ * Fetch a calendar subscription and update the events in the calendar.
+ *
+ * @param int $subscriptionid The course ID for the calendar.
+ * @return string A log of the import progress, including errors.
+ */
+function calendar_update_subscription_events($subscriptionid) {
+    global $DB;
+
+    $sub = calendar_get_subscription($subscriptionid);
+    // Don't update a file subscription. TODO: Update from a new uploaded file.
+    if (empty($sub->url)) {
+        return 'File subscription not updated.';
+    }
+    $ical = calendar_get_icalendar($sub->url);
+    $return = calendar_import_icalendar_events($ical, $sub->courseid, $subscriptionid);
+    $sub->lastupdated = time();
+    $DB->update_record('event_subscriptions', $sub);
+    // Update the cache.
+    $cache = cache::make('core', 'calendar_subscriptions');
+    $cache->set($subscriptionid, $sub);
+    return $return;
+}
+
+/**
+ * Checks to see if the user can edit a given subscription feed.
+ *
+ * @param mixed $subscriptionorid Subscription object or id
+ * @return bool true if current user can edit the subscription else false
+ */
+function calendar_can_edit_subscription($subscriptionorid) {
+    global $DB;
+
+    if (is_array($subscriptionorid)) {
+        $subscription = (object)$subscriptionorid;
+    } else if (is_object($subscriptionorid)) {
+        $subscription = $subscriptionorid;
+    } else {
+        $subscription = calendar_get_subscription($subscriptionorid);
+    }
+    $allowed = new stdClass;
+    $courseid = $subscription->courseid;
+    $groupid = $subscription->groupid;
+    calendar_get_allowed_types($allowed, $courseid);
+    switch ($subscription->eventtype) {
+        case 'user':
+            return $allowed->user;
+        case 'course':
+            if (isset($allowed->courses[$courseid])) {
+                return $allowed->courses[$courseid];
+            } else {
+                return false;
+            }
+        case 'site':
+            return $allowed->site;
+        case 'group':
+            if (isset($allowed->groups[$groupid])) {
+                return $allowed->groups[$groupid];
+            } else {
+                return false;
+            }
+        default:
+            return false;
+    }
+}
+
+/**
+ * Update calendar subscriptions.
+ *
+ * @return bool
+ */
+function calendar_cron() {
+    global $CFG, $DB;
+
+    // In order to execute this we need bennu.
+    require_once($CFG->libdir.'/bennu/bennu.inc.php');
+
+    mtrace('Updating calendar subscriptions:');
+
+    $time = time();
+    $subscriptions = $DB->get_records_sql('SELECT * FROM {event_subscriptions} WHERE pollinterval > 0 AND lastupdated + pollinterval < ?', array($time));
+    foreach ($subscriptions as $sub) {
+        mtrace("Updating calendar subscription {$sub->name} in course {$sub->courseid}");
+        try {
+            $log = calendar_update_subscription_events($sub->id);
+        } catch (moodle_exception $ex) {
+
+        }
+        mtrace(trim(strip_tags($log)));
+    }
+
+    mtrace('Finished updating calendar subscriptions.');
+
+    return true;
 }

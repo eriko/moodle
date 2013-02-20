@@ -2,6 +2,11 @@ This files describes API changes in /enrol/* - plugins,
 information provided here is intended especially for developers.
 
 
+=== 2.5 ===
+
+* plugins may use general enrol/editenrolment.php page to let users edit
+  enrolments manually
+
 === 2.4 ===
 
 required changes in code:
@@ -10,8 +15,10 @@ required changes in code:
 * new restore support: ENROL_RESTORE_EXACT, ENROL_RESTORE_NOUSERS
   and ENROL_RESTORE_CLASS were removed, implement new restore_* plugin methods instead
 
-other changes:
+other changes and new features:
 * course enrolment manager now works with disabled plugins too
+* new support for protected group membership linked to enrol instance
+* new support for expiry notifications - see enrol_plugin::send_expiry_notifications() method
 
 
 === 2.2 ===

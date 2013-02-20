@@ -307,6 +307,19 @@ abstract class advanced_testcase extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * Starts message redirection.
+     *
+     * You can verify if messages were sent or not by inspecting the messages
+     * array in the returned messaging sink instance. The redirection
+     * can be stopped by calling $sink->close();
+     *
+     * @return phpunit_message_sink
+     */
+    public function redirectMessages() {
+        return phpunit_util::start_message_redirection();
+    }
+
+    /**
      * Cleanup after all tests are executed.
      *
      * Note: do not forget to call this if overridden...
@@ -373,7 +386,7 @@ abstract class advanced_testcase extends PHPUnit_Framework_TestCase {
     /**
      * Get data generator
      * @static
-     * @return phpunit_data_generator
+     * @return testing_data_generator
      */
     public static function getDataGenerator() {
         return phpunit_util::get_data_generator();

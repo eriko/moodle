@@ -27,7 +27,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 if ($ADMIN->fulltree) {
-    require_once('locallib.php');
+    require_once($CFG->dirroot.'/enrol/imsenterprise/locallib.php');
 
     $settings->add(new admin_setting_heading('enrol_imsenterprise_settings', '', get_string('pluginname_desc', 'enrol_imsenterprise')));
 
@@ -75,6 +75,19 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configcheckbox('enrol_imsenterprise/createnewcategories', get_string('createnewcategories', 'enrol_imsenterprise'), get_string('createnewcategories_desc', 'enrol_imsenterprise'), 0));
 
     $settings->add(new admin_setting_configcheckbox('enrol_imsenterprise/imsunenrol', get_string('allowunenrol', 'enrol_imsenterprise'), get_string('allowunenrol_desc', 'enrol_imsenterprise'), 0));
+
+    if (!during_initial_install()) {
+        $imscourses = new imsenterprise_courses();
+        foreach ($imscourses->get_courseattrs() as $courseattr) {
+
+            // The assignable values of this course attribute
+            $assignablevalues = $imscourses->get_imsnames($courseattr);
+            $name = get_string('setting' . $courseattr, 'enrol_imsenterprise');
+            $description = get_string('setting' . $courseattr . 'description', 'enrol_imsenterprise');
+            $defaultvalue = (string) $imscourses->determine_default_coursemapping($courseattr);
+            $settings->add(new admin_setting_configselect('enrol_imsenterprise/imscoursemap' . $courseattr, $name, $description, $defaultvalue, $assignablevalues));
+        }
+    }
 
     //--- miscellaneous -------------------------------------------------------------------------------------
     $settings->add(new admin_setting_heading('enrol_imsenterprise_miscsettings', get_string('miscsettings', 'enrol_imsenterprise'), ''));

@@ -25,6 +25,7 @@
 
 $string['addfields'] = 'Add {$a} fields to form';
 $string['advancedelement'] = 'Advanced element';
+$string['close'] = 'Close';
 $string['day'] = 'Day';
 $string['display'] = 'Display';
 $string['err_alphanumeric'] = 'You must enter only letters or numbers here.';
@@ -40,6 +41,7 @@ $string['err_rangelength'] = 'You must enter between {$a->format[0]} and {$a->fo
 $string['err_required'] = 'You must supply a value here.';
 $string['general'] = 'General';
 $string['hideadvanced'] = 'Hide advanced';
+$string['hideeditortoolbar'] = 'Hide editing tools';
 $string['hour'] = 'Hour';
 $string['minute'] = 'Minute';
 $string['miscellaneoussettings'] = 'Miscellaneous settings';
@@ -56,6 +58,9 @@ $string['security'] = 'Security';
 $string['selectallornone'] = 'Select all/none';
 $string['selected'] = 'Selected';
 $string['showadvanced'] = 'Show advanced';
+$string['showless'] = 'Show less...';
+$string['showmore'] = 'Show more...';
+$string['showeditortoolbar'] = 'Show editing tools';
 $string['somefieldsrequired'] = 'There are required fields in this form marked {$a}.';
 $string['time'] = 'Time';
 $string['timeunit'] = 'Time unit';

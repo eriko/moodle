@@ -190,6 +190,15 @@ class restore_gradebook_structure_step extends restore_structure_step {
                 $data->id = $newitemid = $existinggradeitem->id;
                 $DB->update_record('grade_items', $data);
             }
+        } else if ($data->itemtype == 'manual') {
+            // Manual items aren't assigned to a cm, so don't go duplicating them in the target if one exists.
+            $gi = array(
+                'itemtype' => $data->itemtype,
+                'courseid' => $data->courseid,
+                'itemname' => $data->itemname,
+                'categoryid' => $data->categoryid,
+            );
+            $newitemid = $DB->get_field('grade_items', 'id', $gi);
         }
 
         if (empty($newitemid)) {
@@ -288,8 +297,13 @@ class restore_gradebook_structure_step extends restore_structure_step {
 
         $data->courseid = $this->get_courseid();
 
-        $newitemid = $DB->insert_record('grade_settings', $data);
-        //$this->set_mapping('grade_setting', $oldid, $newitemid);
+        if (!$DB->record_exists('grade_settings', array('courseid' => $data->courseid, 'name' => $data->name))) {
+            $newitemid = $DB->insert_record('grade_settings', $data);
+        } else {
+            $newitemid = $data->id;
+        }
+
+        $this->set_mapping('grade_setting', $oldid, $newitemid);
     }
 
     /**
@@ -715,9 +729,6 @@ class restore_groups_structure_step extends restore_structure_step {
         $paths = array(); // Add paths here
 
         $paths[] = new restore_path_element('group', '/groups/group');
-        if ($this->get_setting_value('users')) {
-            $paths[] = new restore_path_element('member', '/groups/group/group_members/group_member');
-        }
         $paths[] = new restore_path_element('grouping', '/groups/groupings/grouping');
         $paths[] = new restore_path_element('grouping_group', '/groups/groupings/grouping/grouping_groups/grouping_group');
 
@@ -767,33 +778,8 @@ class restore_groups_structure_step extends restore_structure_step {
         }
         // Save the id mapping
         $this->set_mapping('group', $oldid, $newitemid, $restorefiles);
-    }
-
-    public function process_member($data) {
-        global $DB;
-
-        $data = (object)$data; // handy
-
-        // get parent group->id
-        $data->groupid = $this->get_new_parentid('group');
-
-        // map user newitemid and insert if not member already
-        if ($data->userid = $this->get_mappingid('user', $data->userid)) {
-            if (!$DB->record_exists('groups_members', array('groupid' => $data->groupid, 'userid' => $data->userid))) {
-                // Check the componment, if any, exists
-                if (!empty($data->component)) {
-                    $dir = get_component_directory($data->component);
-                    if (!$dir || !is_dir($dir)) {
-                        // Component does not exist on restored system; clear
-                        // component and itemid
-                        unset($data->component);
-                        unset($data->itemid);
-                    }
-                }
-
-                $DB->insert_record('groups_members', $data);
-            }
-        }
+        // Invalidate the course group data cache just in case.
+        cache_helper::invalidate_by_definition('core', 'groupdata', array(), array($data->courseid));
     }
 
     public function process_grouping($data) {
@@ -837,23 +823,17 @@ class restore_groups_structure_step extends restore_structure_step {
         }
         // Save the id mapping
         $this->set_mapping('grouping', $oldid, $newitemid, $restorefiles);
+        // Invalidate the course group data cache just in case.
+        cache_helper::invalidate_by_definition('core', 'groupdata', array(), array($data->courseid));
     }
 
     public function process_grouping_group($data) {
-        global $DB;
+        global $CFG;
+
+        require_once($CFG->dirroot.'/group/lib.php');
 
         $data = (object)$data;
-
-        $data->groupingid = $this->get_new_parentid('grouping'); // Use new parentid
-        $data->groupid    = $this->get_mappingid('group', $data->groupid); // Get from mappings
-
-        $params = array();
-        $params['groupingid'] = $data->groupingid;
-        $params['groupid']    = $data->groupid;
-
-        if (!$DB->record_exists('groupings_groups', $params)) {
-            $DB->insert_record('groupings_groups', $data);  // No need to set this mapping (no child info nor files)
-        }
+        groups_assign_grouping($this->get_new_parentid('grouping'), $this->get_mappingid('group', $data->groupid), $data->timeadded);
     }
 
     protected function after_execute() {
@@ -862,8 +842,90 @@ class restore_groups_structure_step extends restore_structure_step {
         $this->add_related_files('group', 'description', 'group');
         // Add grouping related files, matching with "grouping" mappings
         $this->add_related_files('grouping', 'description', 'grouping');
+        // Invalidate the course group data.
+        cache_helper::invalidate_by_definition('core', 'groupdata', array(), array($this->get_courseid()));
     }
 
+}
+
+/**
+ * Structure step that will create all the needed group memberships
+ * by loading them from the groups.xml file performing the required matches.
+ */
+class restore_groups_members_structure_step extends restore_structure_step {
+
+    protected $plugins = null;
+
+    protected function define_structure() {
+
+        $paths = array(); // Add paths here
+
+        if ($this->get_setting_value('users')) {
+            $paths[] = new restore_path_element('group', '/groups/group');
+            $paths[] = new restore_path_element('member', '/groups/group/group_members/group_member');
+        }
+
+        return $paths;
+    }
+
+    public function process_group($data) {
+        $data = (object)$data; // handy
+
+        // HACK ALERT!
+        // Not much to do here, this groups mapping should be already done from restore_groups_structure_step.
+        // Let's fake internal state to make $this->get_new_parentid('group') work.
+
+        $this->set_mapping('group', $data->id, $this->get_mappingid('group', $data->id));
+    }
+
+    public function process_member($data) {
+        global $DB, $CFG;
+        require_once("$CFG->dirroot/group/lib.php");
+
+        // NOTE: Always use groups_add_member() because it triggers events and verifies if user is enrolled.
+
+        $data = (object)$data; // handy
+
+        // get parent group->id
+        $data->groupid = $this->get_new_parentid('group');
+
+        // map user newitemid and insert if not member already
+        if ($data->userid = $this->get_mappingid('user', $data->userid)) {
+            if (!$DB->record_exists('groups_members', array('groupid' => $data->groupid, 'userid' => $data->userid))) {
+                // Check the component, if any, exists.
+                if (empty($data->component)) {
+                    groups_add_member($data->groupid, $data->userid);
+
+                } else if ((strpos($data->component, 'enrol_') === 0)) {
+                    // Deal with enrolment groups - ignore the component and just find out the instance via new id,
+                    // it is possible that enrolment was restored using different plugin type.
+                    if (!isset($this->plugins)) {
+                        $this->plugins = enrol_get_plugins(true);
+                    }
+                    if ($enrolid = $this->get_mappingid('enrol', $data->itemid)) {
+                        if ($instance = $DB->get_record('enrol', array('id'=>$enrolid))) {
+                            if (isset($this->plugins[$instance->enrol])) {
+                                $this->plugins[$instance->enrol]->restore_group_member($instance, $data->groupid, $data->userid);
+                            }
+                        }
+                    }
+
+                } else {
+                    $dir = get_component_directory($data->component);
+                    if ($dir and is_dir($dir)) {
+                        if (component_callback($data->component, 'restore_group_member', array($this, $data), true)) {
+                            return;
+                        }
+                    }
+                    // Bad luck, plugin could not restore the data, let's add normal membership.
+                    groups_add_member($data->groupid, $data->userid);
+                    $message = "Restore of '$data->component/$data->itemid' group membership is not supported, using standard group membership instead.";
+                    debugging($message);
+                    $this->log($message, backup::LOG_WARNING);
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -1050,9 +1112,13 @@ class restore_section_structure_step extends restore_structure_step {
             $paths[] = new restore_path_element('availability', '/section/availability');
             $paths[] = new restore_path_element('availability_field', '/section/availability_field');
         }
+        $paths[] = new restore_path_element('course_format_options', '/section/course_format_options');
 
         // Apply for 'format' plugins optional paths at section level
         $this->add_plugin_structure('format', $section);
+
+        // Apply for 'local' plugins optional paths at section level
+        $this->add_plugin_structure('local', $section);
 
         return $paths;
     }
@@ -1183,6 +1249,17 @@ class restore_section_structure_step extends restore_structure_step {
         }
     }
 
+    public function process_course_format_options($data) {
+        global $DB;
+        $data = (object)$data;
+        $oldid = $data->id;
+        unset($data->id);
+        $data->sectionid = $this->task->get_sectionid();
+        $data->courseid = $this->get_courseid();
+        $newid = $DB->insert_record('course_format_options', $data);
+        $this->set_mapping('course_format_options', $oldid, $newid);
+    }
+
     protected function after_execute() {
         // Add section related files, with 'course_section' itemid to match
         $this->add_related_files('course', 'section', 'course_section');
@@ -1194,11 +1271,11 @@ class restore_section_structure_step extends restore_structure_step {
         $sectionid = $this->get_task()->get_sectionid();
 
         // Get data object for current section availability (if any).
-        $data = $DB->get_record('course_sections_availability',
-                array('coursesectionid' => $sectionid), 'id, sourcecmid, gradeitemid', IGNORE_MISSING);
+        $records = $DB->get_records('course_sections_availability',
+                array('coursesectionid' => $sectionid), 'id, sourcecmid, gradeitemid');
 
         // If it exists, update mappings.
-        if ($data) {
+        foreach ($records as $data) {
             // Only update mappings for entries which are created by this restore.
             // Otherwise, when you restore to an existing course, it will mess up
             // existing section availability entries.
@@ -1267,6 +1344,9 @@ class restore_course_structure_step extends restore_structure_step {
         // Apply for plagiarism plugins optional paths at course level
         $this->add_plugin_structure('plagiarism', $course);
 
+        // Apply for local plugins optional paths at course level
+        $this->add_plugin_structure('local', $course);
+
         return array($course, $category, $tag, $allowed_module);
     }
 
@@ -1331,6 +1411,8 @@ class restore_course_structure_step extends restore_structure_step {
 
         // Course record ready, update it
         $DB->update_record('course', $data);
+
+        course_get_format($data)->update_course_format_options($data);
 
         // Role name aliases
         restore_dbops::set_course_role_names($this->get_restoreid(), $this->get_courseid());
@@ -1475,6 +1557,22 @@ class restore_ras_and_caps_structure_step extends restore_structure_step {
                     }
                 }
             }
+
+        } else {
+            $data->roleid    = $newroleid;
+            $data->userid    = $newuserid;
+            $data->contextid = $contextid;
+            $dir = get_component_directory($data->component);
+            if ($dir and is_dir($dir)) {
+                if (component_callback($data->component, 'restore_role_assignment', array($this, $data), true)) {
+                    return;
+                }
+            }
+            // Bad luck, plugin could not restore the data, let's add normal membership.
+            role_assign($data->roleid, $data->userid, $data->contextid);
+            $message = "Restore of '$data->component/$data->itemid' role assignments is not supported, using manual role assignments instead.";
+            debugging($message);
+            $this->log($message, backup::LOG_WARNING);
         }
     }
 
@@ -1594,8 +1692,10 @@ class restore_enrolments_structure_step extends restore_structure_step {
 
         } else {
             if (!enrol_is_enabled($data->enrol) or !isset($this->plugins[$data->enrol])) {
-                debugging("Enrol plugin data can not be restored because it is not enabled, use migration to manual enrolments");
                 $this->set_mapping('enrol', $oldid, 0);
+                $message = "Enrol plugin '$data->enrol' data can not be restored because it is not enabled, use migration to manual enrolments";
+                debugging($message);
+                $this->log($message, backup::LOG_WARNING);
                 return;
             }
             if ($task = $this->get_task() and $task->get_target() == backup::TARGET_NEW_COURSE) {
@@ -1720,6 +1820,14 @@ class restore_filters_structure_step extends restore_structure_step {
 
         $data = (object)$data;
 
+        if (strpos($data->filter, 'filter/') === 0) {
+            $data->filter = substr($data->filter, 7);
+
+        } else if (strpos($data->filter, '/') !== false) {
+            // Unsupported old filter.
+            return;
+        }
+
         if (!filter_is_enabled($data->filter)) { // Not installed or not enabled, nothing to do
             return;
         }
@@ -1729,6 +1837,14 @@ class restore_filters_structure_step extends restore_structure_step {
     public function process_config($data) {
 
         $data = (object)$data;
+
+        if (strpos($data->filter, 'filter/') === 0) {
+            $data->filter = substr($data->filter, 7);
+
+        } else if (strpos($data->filter, '/') !== false) {
+            // Unsupported old filter.
+            return;
+        }
 
         if (!filter_is_enabled($data->filter)) { // Not installed or not enabled, nothing to do
             return;
@@ -1796,7 +1912,7 @@ class restore_calendarevents_structure_step extends restore_structure_step {
     }
 
     public function process_calendarevents($data) {
-        global $DB;
+        global $DB, $SITE;
 
         $data = (object)$data;
         $oldid = $data->id;
@@ -2237,17 +2353,25 @@ class restore_activity_grading_structure_step extends restore_structure_step {
         $paths = array();
         $userinfo = $this->get_setting_value('userinfo');
 
-        $paths[] = new restore_path_element('grading_area', '/areas/area');
+        $area = new restore_path_element('grading_area', '/areas/area');
+        $paths[] = $area;
+        // attach local plugin stucture to $area element
+        $this->add_plugin_structure('local', $area);
 
         $definition = new restore_path_element('grading_definition', '/areas/area/definitions/definition');
         $paths[] = $definition;
         $this->add_plugin_structure('gradingform', $definition);
+        // attach local plugin stucture to $definition element
+        $this->add_plugin_structure('local', $definition);
+
 
         if ($userinfo) {
             $instance = new restore_path_element('grading_instance',
                 '/areas/area/definitions/definition/instances/instance');
             $paths[] = $instance;
             $this->add_plugin_structure('gradingform', $instance);
+            // attach local plugin stucture to $intance element
+            $this->add_plugin_structure('local', $instance);
         }
 
         return $paths;
@@ -2610,6 +2734,9 @@ class restore_module_structure_step extends restore_structure_step {
         // Apply for 'plagiarism' plugins optional paths at module level
         $this->add_plugin_structure('plagiarism', $module);
 
+        // Apply for 'local' plugins optional paths at module level
+        $this->add_plugin_structure('local', $module);
+
         return $paths;
     }
 
@@ -2906,6 +3033,9 @@ class restore_create_categories_and_questions extends restore_structure_step {
         // Apply for 'qtype' plugins optional paths at question level
         $this->add_plugin_structure('qtype', $question);
 
+        // Apply for 'local' plugins optional paths at question level
+        $this->add_plugin_structure('local', $question);
+
         return array($category, $question, $hint);
     }
 
@@ -2970,9 +3100,6 @@ class restore_create_categories_and_questions extends restore_structure_step {
             $data->penalty = 1;
         }
 
-        $data->timecreated  = $this->apply_date_offset($data->timecreated);
-        $data->timemodified = $this->apply_date_offset($data->timemodified);
-
         $userid = $this->get_mappingid('user', $data->createdby);
         $data->createdby = $userid ? $userid : $this->task->get_userid();
 
@@ -3026,6 +3153,22 @@ class restore_create_categories_and_questions extends restore_structure_step {
                        AND ' . $DB->sql_compare_text('hint', 255) . ' = ' . $DB->sql_compare_text('?', 255);
             $params = array($newquestionid, $data->hint);
             $newitemid = $DB->get_field_sql($sql, $params);
+
+            // Not able to find the hint, let's try cleaning the hint text
+            // of all the question's hints in DB as slower fallback. MDL-33863.
+            if (!$newitemid) {
+                $potentialhints = $DB->get_records('question_hints',
+                        array('questionid' => $newquestionid), '', 'id, hint');
+                foreach ($potentialhints as $potentialhint) {
+                    // Clean in the same way than {@link xml_writer::xml_safe_utf8()}.
+                    $cleanhint = preg_replace('/[\x-\x8\xb-\xc\xe-\x1f\x7f]/is','', $potentialhint->hint); // Clean CTRL chars.
+                    $cleanhint = preg_replace("/\r\n|\r/", "\n", $cleanhint); // Normalize line ending.
+                    if ($cleanhint === $data->hint) {
+                        $newitemid = $data->id;
+                    }
+                }
+            }
+
             // If we haven't found the newitemid, something has gone really wrong, question in DB
             // is missing hints, exception
             if (!$newitemid) {
@@ -3204,10 +3347,10 @@ class restore_create_question_files extends restore_execution_step {
  */
 class restore_process_file_aliases_queue extends restore_execution_step {
 
-    /** @var array internal cache for {@link choose_repository() */
+    /** @var array internal cache for {@link choose_repository()} */
     private $cachereposbyid = array();
 
-    /** @var array internal cache for {@link choose_repository() */
+    /** @var array internal cache for {@link choose_repository()} */
     private $cachereposbytype = array();
 
     /**

@@ -16,6 +16,7 @@
  * this.viewmode, store current view mode
  * this.pathbar, reference to the Node with path bar
  * this.pathnode, a Node element representing one folder in a path bar (not attached anywhere, just used for template)
+ * this.currentpath, the current path in the repository (or last requested path)
  *
  * Filepicker options:
  * =====
@@ -39,7 +40,7 @@
  * this.filelist, cached filelist
  * this.pages
  * this.page
- * this.filepath, current path
+ * this.filepath, current path (each element of the array is a part of the breadcrumb)
  * this.logindata, cached login form
  */
 
@@ -320,7 +321,6 @@ YUI.add('moodle-core_filepicker', function(Y) {
         }
         /** initialize table view */
         var initialize_table_view = function() {
-            var parentid = scope.one('.'+classname).get('id');
             var cols = [
                 {key: "displayname", label: M.str.moodle.name, allowHTML: true, formatter: formatTitle,
                     sortable: true, sortFn: sortFoldersFirst},
@@ -331,8 +331,13 @@ YUI.add('moodle-core_filepicker', function(Y) {
                 {key: "mimetype", label: M.str.repository.type, allowHTML: true,
                     sortable: true, sortFn: sortFoldersFirst}
             ];
-            scope.tableview = new Y.DataTable({columns: cols});
-            scope.tableview.render('#'+parentid);
+            for (var k in fileslist) {
+                // to speed up sorting and formatting
+                fileslist[k].displayname = file_get_displayname(fileslist[k]);
+                fileslist[k].isfolder = file_is_folder(fileslist[k]);
+                fileslist[k].classname = options.classnamecallback(fileslist[k]);
+            }
+            scope.tableview = new Y.DataTable({columns: cols, data: fileslist});
             scope.tableview.delegate('click', function (e, tableview) {
                 var record = tableview.getRecord(e.currentTarget.get('id'));
                 if (record) {
@@ -352,13 +357,8 @@ YUI.add('moodle-core_filepicker', function(Y) {
         }
         /** append items in table view mode */
         var append_files_table = function() {
-            for (var k in fileslist) {
-                // to speed up sorting and formatting
-                fileslist[k].displayname = file_get_displayname(fileslist[k]);
-                fileslist[k].isfolder = file_is_folder(fileslist[k]);
-                fileslist[k].classname = options.classnamecallback(fileslist[k]);
-            }
-            scope.tableview.addRows(fileslist);
+            var parentnode = scope.one('.'+classname);
+            scope.tableview.render(parentnode);
             scope.tableview.sortable = options.sortable ? true : false;
         };
         /** append items in tree view mode */
@@ -543,6 +543,8 @@ M.core_filepicker.init = function(Y, options) {
             params['client_id'] = args.client_id;
             params['itemid'] = this.options.itemid?this.options.itemid:0;
             params['maxbytes'] = this.options.maxbytes?this.options.maxbytes:-1;
+            // The unlimited value of areamaxbytes is -1, it is defined by FILE_AREA_MAX_BYTES_UNLIMITED.
+            params['areamaxbytes'] = this.options.areamaxbytes ? this.options.areamaxbytes : -1;
             if (this.options.context && this.options.context.id) {
                 params['ctx_id'] = this.options.context.id;
             }
@@ -709,7 +711,7 @@ M.core_filepicker.init = function(Y, options) {
                 this.process_dlg = new Y.Panel({
                     srcNode      : node,
                     headerContent: M.str.repository.fileexistsdialogheader,
-                    zIndex       : 800000,
+                    zIndex       : 8000,
                     centered     : true,
                     modal        : true,
                     visible      : false,
@@ -751,7 +753,7 @@ M.core_filepicker.init = function(Y, options) {
 
                 this.msg_dlg = new Y.Panel({
                     srcNode      : this.msg_dlg_node,
-                    zIndex       : 800000,
+                    zIndex       : 8000,
                     centered     : true,
                     modal        : true,
                     visible      : false,
@@ -932,6 +934,7 @@ M.core_filepicker.init = function(Y, options) {
                         // save current path and filelist (in case we want to jump to other viewmode)
                         this.filepath = e.node.origpath;
                         this.filelist = e.node.origlist;
+                        this.currentpath = e.node.path;
                         this.print_path();
                         this.content_scrolled();
                     }
@@ -967,7 +970,6 @@ M.core_filepicker.init = function(Y, options) {
                         if (this.active_repo.dynload) {
                             this.list({'path':node.path});
                         } else {
-                            this.filepath = node.path;
                             this.filelist = node.children;
                             this.view_files();
                         }
@@ -1002,7 +1004,6 @@ M.core_filepicker.init = function(Y, options) {
                         if (this.active_repo.dynload) {
                             this.list({'path':node.path});
                         } else {
-                            this.filepath = node.path;
                             this.filelist = node.children;
                             this.view_files();
                         }
@@ -1022,9 +1023,13 @@ M.core_filepicker.init = function(Y, options) {
             }
             this.active_repo.nextpagerequested = true;
             var nextpage = this.active_repo.page+1;
-            var args = {page:nextpage, repo_id:this.active_repo.id, path:this.active_repo.path};
+            var args = {
+                page: nextpage,
+                repo_id: this.active_repo.id
+            };
             var action = this.active_repo.issearchresult ? 'search' : 'list';
             this.request({
+                path: this.currentpath,
                 scope: this,
                 action: action,
                 client_id: this.options.client_id,
@@ -1032,10 +1037,20 @@ M.core_filepicker.init = function(Y, options) {
                 params: args,
                 callback: function(id, obj, args) {
                     var scope = args.scope;
-                    // check that we are still in the same repository and are expecting this page
+                    // Check that we are still in the same repository and are expecting this page. We have no way
+                    // to compare the requested page and the one returned, so we assume that if the last chunk
+                    // of the breadcrumb is similar, then we probably are on the same page.
+                    var samepage = true;
+                    if (obj.path && scope.filepath) {
+                        var pathbefore = scope.filepath[scope.filepath.length-1];
+                        var pathafter = obj.path[obj.path.length-1];
+                        if (pathbefore.path != pathafter.path) {
+                            samepage = false;
+                        }
+                    }
                     if (scope.active_repo.hasmorepages && obj.list && obj.page &&
                             obj.repo_id == scope.active_repo.id &&
-                            obj.page == scope.active_repo.page+1 && obj.path == scope.path) {
+                            obj.page == scope.active_repo.page+1 && samepage) {
                         scope.parse_repository_options(obj, true);
                         scope.view_files(obj.list)
                     }
@@ -1266,7 +1281,7 @@ M.core_filepicker.init = function(Y, options) {
             this.mainui = new Y.Panel({
                 srcNode      : this.fpnode,
                 headerContent: M.str.repository.filepicker,
-                zIndex       : 500000,
+                zIndex       : 7500,
                 centered     : true,
                 modal        : true,
                 visible      : false,
@@ -1287,7 +1302,7 @@ M.core_filepicker.init = function(Y, options) {
                 set('id', 'filepicker-select-'+client_id);
             this.selectui = new Y.Panel({
                 srcNode      : this.selectnode,
-                zIndex       : 600000,
+                zIndex       : 7600,
                 centered     : true,
                 modal        : true,
                 close        : true,
@@ -1305,8 +1320,10 @@ M.core_filepicker.init = function(Y, options) {
                 this.pathbar.removeChild(this.pathnode);
             }
             // assign callbacks for view mode switch buttons
-            this.fpnode.all('.fp-vb-icons,.fp-vb-tree,.fp-vb-details').
-                on('click', this.viewbar_clicked, this);
+            this.fpnode.one('.fp-vb-icons').on('click', this.viewbar_clicked, this);
+            this.fpnode.one('.fp-vb-tree').on('click', this.viewbar_clicked, this);
+            this.fpnode.one('.fp-vb-details').on('click', this.viewbar_clicked, this);
+
             // assign callbacks for toolbar links
             this.setup_toolbar();
             this.setup_select_file();
@@ -1564,6 +1581,10 @@ M.core_filepicker.init = function(Y, options) {
             if (!args.repo_id) {
                 args.repo_id = this.active_repo.id;
             }
+            if (!args.path) {
+                args.path = '';
+            }
+            this.currentpath = args.path;
             this.request({
                 action: 'list',
                 client_id: this.options.client_id,
@@ -1707,7 +1728,7 @@ M.core_filepicker.init = function(Y, options) {
             toolbar.one('.fp-tb-refresh').one('a,button').on('click', function(e) {
                 e.preventDefault();
                 if (!this.active_repo.norefresh) {
-                    this.list();
+                    this.list({ path: this.currentpath });
                 }
             }, this);
             toolbar.one('.fp-tb-search form').

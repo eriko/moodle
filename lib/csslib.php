@@ -113,7 +113,7 @@ function css_send_ie_css($themename, $rev, $etag, $slasharguments) {
 
     $relroot = preg_replace('|^http.?://[^/]+|', '', $CFG->wwwroot);
 
-    $css  = "/** Unfortunately IE6/7 does not support more than 4096 selectors in one CSS file, which means we have to use some ugly hacks :-( **/";
+    $css  = "/** Unfortunately IE6-9 does not support more than 4096 selectors in one CSS file, which means we have to use some ugly hacks :-( **/";
     if ($slasharguments) {
         $css .= "\n@import url($relroot/styles.php/$themename/$rev/plugins);";
         $css .= "\n@import url($relroot/styles.php/$themename/$rev/parents);";
@@ -251,6 +251,8 @@ function css_minify_css($files) {
     Minify::setCache(null, false);
 
     $options = array(
+        // JSMin is not GNU GPL compatible, use the plus version instead.
+        'minifiers' => array(Minify::TYPE_JS => array('JSMinPlus', 'minify')),
         'bubbleCssImports' => false,
         // Don't gzip content we just want text for storage
         'encodeOutput' => false,

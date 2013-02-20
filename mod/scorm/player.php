@@ -135,6 +135,12 @@ $attemptstr = '&amp;attempt=' . $attempt;
 
 $result = scorm_get_toc($USER, $scorm, $cm->id, TOCJSLINK, $currentorg, $scoid, $mode, $attempt, true, true);
 $sco = $result->sco;
+if ($scorm->lastattemptlock == 1 && $result->attemptleft == 0) {
+    echo $OUTPUT->header();
+    echo $OUTPUT->notification(get_string('exceededmaxattempts', 'scorm'));
+    echo $OUTPUT->footer();
+    exit;
+}
 
 if (($mode == 'browse') && ($scorm->hidebrowse == 1)) {
     $mode = 'normal';
@@ -190,7 +196,6 @@ $PAGE->requires->data_for_js('scormplayerdata', Array('launch' => false,
                                                        'popupoptions' => $scorm->options), true);
 $PAGE->requires->js('/mod/scorm/request.js', true);
 $PAGE->requires->js('/lib/cookies.js', true);
-$PAGE->requires->css('/mod/scorm/styles.css');
 echo $OUTPUT->header();
 
 // NEW IMS TOC
@@ -269,12 +274,14 @@ if ($result->prerequisites) {
 ?>
     </div> <!-- SCORM page -->
 <?php
+$scoes = scorm_get_toc_object($USER, $scorm, "", $sco->id, $mode, $attempt);
+$adlnav = scorm_get_adlnav_json($scoes['scoes']);
 // NEW IMS TOC
 if (empty($scorm->popup) || $displaymode == 'popup') {
     if (!isset($result->toctitle)) {
         $result->toctitle = get_string('toc', 'scorm');
     }
-    $PAGE->requires->js_init_call('M.mod_scorm.init', array($scorm->hidenav, $scorm->hidetoc, $result->toctitle, $name, $sco->id));
+    $PAGE->requires->js_init_call('M.mod_scorm.init', array($scorm->hidenav, $scorm->hidetoc, $result->toctitle, $name, $sco->id, $adlnav));
 }
 if (!empty($forcejs)) {
     echo $OUTPUT->box(get_string("forcejavascriptmessage", "scorm"), "generalbox boxaligncenter forcejavascriptmessage");

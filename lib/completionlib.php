@@ -147,6 +147,73 @@ define('COMPLETION_AGGREGATION_ANY', 2);
 
 
 /**
+ * Utility function for checking if the logged in user can view
+ * another's completion data for a particular course
+ *
+ * @access  public
+ * @param   int         $userid     Completion data's owner
+ * @param   mixed       $course     Course object or Course ID (optional)
+ * @return  boolean
+ */
+function completion_can_view_data($userid, $course = null) {
+    global $USER;
+
+    if (!isloggedin()) {
+        return false;
+    }
+
+    if (!is_object($course)) {
+        $cid = $course;
+        $course = new object();
+        $course->id = $cid;
+    }
+
+    // Check if this is the site course
+    if ($course->id == SITEID) {
+        $course = null;
+    }
+
+    // Check if completion is enabled
+    if ($course) {
+        $cinfo = new completion_info($course);
+        if (!$cinfo->is_enabled()) {
+            return false;
+        }
+    } else {
+        if (!completion_info::is_enabled_for_site()) {
+            return false;
+        }
+    }
+
+    // Is own user's data?
+    if ($USER->id == $userid) {
+        return true;
+    }
+
+    // Check capabilities
+    $personalcontext = context_user::instance($userid);
+
+    if (has_capability('moodle/user:viewuseractivitiesreport', $personalcontext)) {
+        return true;
+    } elseif (has_capability('report/completion:view', $personalcontext)) {
+        return true;
+    }
+
+    if ($course->id) {
+        $coursecontext = context_course::instance($course->id);
+    } else {
+        $coursecontext = context_system::instance();
+    }
+
+    if (has_capability('report/completion:view', $coursecontext)) {
+        return true;
+    }
+
+    return false;
+}
+
+
+/**
  * Class represents completion information for a course.
  *
  * Does not contain any data, so you can safely construct it multiple times
@@ -259,9 +326,9 @@ class completion_info {
         global $PAGE, $OUTPUT;
         $result = '';
         if ($this->is_enabled() && !$PAGE->user_is_editing() && isloggedin() && !isguestuser()) {
-            $result .= '<span id = "completionprogressid" class="completionprogress">'.get_string('yourprogress','completion').' ';
-            $result .= $OUTPUT->help_icon('completionicons', 'completion');
-            $result .= '</span>';
+            $result .= html_writer::tag('div', get_string('yourprogress','completion') .
+                    $OUTPUT->help_icon('completionicons', 'completion'), array('id' => 'completionprogressid',
+                    'class' => 'completionprogress'));
         }
         return $result;
     }
@@ -971,8 +1038,8 @@ class completion_info {
 
         if ($data->userid == $USER->id) {
             $SESSION->completioncache[$cm->course][$cm->id] = $data;
-            $reset = 'reset';
-            get_fast_modinfo($reset);
+            // reset modinfo for user (no need to call rebuild_course_cache())
+            get_fast_modinfo($cm->course, 0, true);
         }
     }
 
@@ -1021,7 +1088,7 @@ class completion_info {
      * @return bool
      */
     public function is_tracked_user($userid) {
-        return is_enrolled(context_course::instance($this->course->id), $userid, '', true);
+        return is_enrolled(context_course::instance($this->course->id), $userid, 'moodle/course:isincompletionreports', true);
     }
 
     /**
@@ -1038,7 +1105,7 @@ class completion_info {
         global $DB;
 
         list($enrolledsql, $enrolledparams) = get_enrolled_sql(
-                context_course::instance($this->course->id), '', $groupid, true);
+                context_course::instance($this->course->id), 'moodle/course:isincompletionreports', $groupid, true);
         $sql  = 'SELECT COUNT(eu.id) FROM (' . $enrolledsql . ') eu JOIN {user} u ON u.id = eu.id';
         if ($where) {
             $sql .= " WHERE $where";
@@ -1069,7 +1136,8 @@ class completion_info {
         global $DB;
 
         list($enrolledsql, $params) = get_enrolled_sql(
-                context_course::instance($this->course->id), '', $groupid, true);
+                context_course::instance($this->course->id),
+                'moodle/course:isincompletionreports', $groupid, true);
 
         $sql = 'SELECT u.id, u.firstname, u.lastname, u.idnumber';
         if ($extracontext) {

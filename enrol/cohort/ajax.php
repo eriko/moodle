@@ -49,13 +49,18 @@ require_login($course);
 require_capability('moodle/course:enrolreview', $context);
 require_sesskey();
 
+if (!enrol_is_enabled('cohort')) {
+    // This should never happen, no need to invent new error strings.
+    throw new enrol_ajax_exception('errorenrolcohort');
+}
+
 echo $OUTPUT->header(); // Send headers.
 
 $manager = new course_enrolment_manager($PAGE, $course);
 
-$outcome = new stdClass;
+$outcome = new stdClass();
 $outcome->success = true;
-$outcome->response = new stdClass;
+$outcome->response = new stdClass();
 $outcome->error = '';
 
 switch ($action) {
@@ -72,6 +77,8 @@ switch ($action) {
         $offset = optional_param('offset', 0, PARAM_INT);
         $search  = optional_param('search', '', PARAM_RAW);
         $outcome->response = enrol_cohort_search_cohorts($manager, $offset, 25, $search);
+        // Some browsers reorder collections by key.
+        $outcome->response['cohorts'] = array_values($outcome->response['cohorts']);
         break;
     case 'enrolcohort':
         require_capability('moodle/course:enrolconfig', $context);
@@ -85,21 +92,26 @@ switch ($action) {
         }
         $enrol = enrol_get_plugin('cohort');
         $enrol->add_instance($manager->get_course(), array('customint1' => $cohortid, 'roleid' => $roleid));
-        enrol_cohort_sync($manager->get_course()->id);
+        $trace = new null_progress_trace();
+        enrol_cohort_sync($trace, $manager->get_course()->id);
+        $trace->finished();
         break;
     case 'enrolcohortusers':
+        //TODO: this should be moved to enrol_manual, see MDL-35618.
         require_capability('enrol/manual:enrol', $context);
         $roleid = required_param('roleid', PARAM_INT);
         $cohortid = required_param('cohortid', PARAM_INT);
-        $result = enrol_cohort_enrol_all_users($manager, $cohortid, $roleid);
 
         $roles = $manager->get_assignable_roles();
         if (!enrol_cohort_can_view_cohort($cohortid) || !array_key_exists($roleid, $roles)) {
             throw new enrol_ajax_exception('errorenrolcohort');
         }
+
+        $result = enrol_cohort_enrol_all_users($manager, $cohortid, $roleid);
         if ($result === false) {
             throw new enrol_ajax_exception('errorenrolcohortusers');
         }
+
         $outcome->success = true;
         $outcome->response->users = $result;
         $outcome->response->title = get_string('success');

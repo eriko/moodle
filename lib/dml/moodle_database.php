@@ -118,6 +118,9 @@ abstract class moodle_database {
     /** @var bool Flag used to force rollback of all current transactions. */
     private $force_rollback = false;
 
+    /** @var string MD5 of settings used for connection. Used by MUC as an identifier. */
+    private $settingshash;
+
     /**
      * @var int internal temporary variable used to fix params. Its used by {@link _fix_sql_params_dollar_callback()}.
      */
@@ -289,6 +292,20 @@ abstract class moodle_database {
     }
 
     /**
+     * Returns a hash for the settings used during connection.
+     *
+     * If not already requested it is generated and stored in a private property.
+     *
+     * @return string
+     */
+    protected function get_settings_hash() {
+        if (empty($this->settingshash)) {
+            $this->settingshash = md5($this->dbhost . $this->dbuser . $this->dbname . $this->prefix);
+        }
+        return $this->settingshash;
+    }
+
+    /**
      * Attempt to create the database
      * @param string $dbhost The database host.
      * @param string $dbuser The database user to connect as.
@@ -324,11 +341,13 @@ abstract class moodle_database {
             }
             $this->force_transaction_rollback();
         }
-        if ($this->used_for_db_sessions) {
-            // this is needed because we need to save session to db before closing it
+        // Always terminate sessions here to make it consistent,
+        // this is needed because we need to save session to db before closing it.
+        if (function_exists('session_get_instance')) {
             session_get_instance()->write_close();
-            $this->used_for_db_sessions = false;
         }
+        $this->used_for_db_sessions = false;
+
         if ($this->temptables) {
             $this->temptables->dispose();
             $this->temptables = null;
@@ -389,6 +408,7 @@ abstract class moodle_database {
             // free memory
             $this->last_sql    = null;
             $this->last_params = null;
+            $this->print_debug_time();
             return;
         }
 
@@ -396,7 +416,6 @@ abstract class moodle_database {
         $type   = $this->last_type;
         $sql    = $this->last_sql;
         $params = $this->last_params;
-        $time   = microtime(true) - $this->last_time;
         $error  = $this->get_last_error();
 
         $this->query_log($error);
@@ -497,6 +516,25 @@ abstract class moodle_database {
             if (!is_null($params)) {
                 echo "[".s(var_export($params, true))."]\n";
             }
+            echo "<hr />\n";
+        }
+    }
+
+    /**
+     * Prints the time a query took to run.
+     * @return void
+     */
+    protected function print_debug_time() {
+        if (!$this->get_debug()) {
+            return;
+        }
+        $time = microtime(true) - $this->last_time;
+        $message = "Query took: {$time} seconds.\n";
+        if (CLI_SCRIPT) {
+            echo $message;
+            echo "--------------------------------\n";
+        } else {
+            echo s($message);
             echo "<hr />\n";
         }
     }
@@ -909,6 +947,9 @@ abstract class moodle_database {
     public function reset_caches() {
         $this->columns = array();
         $this->tables  = null;
+        // Purge MUC as well
+        $identifiers = array('dbfamily' => $this->get_dbfamily(), 'settings' => $this->get_settings_hash());
+        cache_helper::purge_by_definition('core', 'databasemeta', $identifiers);
     }
 
     /**

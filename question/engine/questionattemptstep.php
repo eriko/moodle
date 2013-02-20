@@ -386,7 +386,7 @@ class question_attempt_step {
         $record = $currentrec;
         $data = array();
         while ($currentrec && $currentrec->attemptstepid == $attemptstepid) {
-            if ($currentrec->name) {
+            if (!is_null($currentrec->name)) {
                 $data[$currentrec->name] = $currentrec->value;
             }
             $records->next();
@@ -534,7 +534,7 @@ class question_attempt_step_subquestion_adapter extends question_attempt_step {
      * null if the extre prefix was not present.
      */
     public function remove_prefix($field) {
-        if (preg_match('~^(-?_?)' . preg_quote($this->extraprefix) . '(.*)$~', $field, $matches)) {
+        if (preg_match('~^(-?_?)' . preg_quote($this->extraprefix, '~') . '(.*)$~', $field, $matches)) {
             return $matches[1] . $matches[2];
         } else {
             return null;

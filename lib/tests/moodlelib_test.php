@@ -41,16 +41,27 @@ class moodlelib_testcase extends advanced_testcase {
             '6.0' => array('Windows XP SP2' => 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'),
             '7.0' => array('Windows XP SP2' => 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; YPC 3.0.1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)'),
             '8.0' => array('Windows Vista' => 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; .NET CLR 2.0.50727; .NET CLR 1.1.4322; .NET CLR 3.0.04506.30; .NET CLR 3.0.04506.648)'),
-            '9.0' => array('Windows 7' => 'Mozilla/5.0 (Windows; U; MSIE 9.0; WIndows NT 9.0; en-US))'),
-
+            '9.0' => array('Windows 7' => 'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)'),
+            '9.0i' => array('Windows 7' => 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0)'),
+            '10.0' => array('Windows 8' => 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; Trident/6.0; Touch)'),
+            '10.0i' => array('Windows 8' => 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.2; Trident/6.0; Touch; .NET4.0E; .NET4.0C; Tablet PC 2.0)'),
         ),
         'Firefox' => array(
             '1.0.6'   => array('Windows XP' => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.7.10) Gecko/20050716 Firefox/1.0.6'),
             '1.5'     => array('Windows XP' => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; nl; rv:1.8) Gecko/20051107 Firefox/1.5'),
             '1.5.0.1' => array('Windows XP' => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.8.0.1) Gecko/20060111 Firefox/1.5.0.1'),
             '2.0'     => array('Windows XP' => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.1) Gecko/20061204 Firefox/2.0.0.1',
-                'Ubuntu Linux AMD64' => 'Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.8.1) Gecko/20060601 Firefox/2.0 (Ubuntu-edgy)'),
-            '3.0.6' => array('SUSE' => 'Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.0.6) Gecko/2009012700 SUSE/3.0.6-1.4 Firefox/3.0.6'),
+                               'Ubuntu Linux AMD64' => 'Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.8.1) Gecko/20060601 Firefox/2.0 (Ubuntu-edgy)'),
+            '3.0.6'   => array('SUSE' => 'Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.0.6) Gecko/2009012700 SUSE/3.0.6-1.4 Firefox/3.0.6'),
+            '3.6'     => array('Linux' => 'Mozilla/5.0 (X11; Linux i686; rv:2.0) Gecko/20100101 Firefox/3.6'),
+            '11.0'    => array('Windows' => 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:11.0) Gecko Firefox/11.0'),
+            '15.0a2'  => array('Windows' => 'Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2'),
+            '18.0'    => array('Mac OS X' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:18.0) Gecko/18.0 Firefox/18.0'),
+        ),
+        'SeaMonkey' => array(
+            '2.0' => array('Windows' => 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1b3pre) Gecko/20081208 SeaMonkey/2.0'),
+            '2.1' => array('Linux' => 'Mozilla/5.0 (X11; Linux x86_64; rv:2.0.1) Gecko/20110609 Firefox/4.0.1 SeaMonkey/2.1'),
+            '2.3' => array('FreeBSD' => 'Mozilla/5.0 (X11; FreeBSD amd64; rv:6.0) Gecko/20110818 Firefox/6.0 SeaMonkey/2.3'),
         ),
         'Safari' => array(
             '312' => array('Mac OS X' => 'Mozilla/5.0 (Macintosh; U; PPC Mac OS X; en-us) AppleWebKit/312.1 (KHTML, like Gecko) Safari/312'),
@@ -244,10 +255,140 @@ class moodlelib_testcase extends advanced_testcase {
         $this->assertTrue(check_browser_version('MSIE', '9.0'));
         $this->assertFalse(check_browser_version('MSIE', '10'));
 
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['9.0i']['Windows 7'];
+        $this->assertTrue(check_browser_version('MSIE'));
+        $this->assertTrue(check_browser_version('MSIE', 0));
+        $this->assertTrue(check_browser_version('MSIE', '5.0'));
+        $this->assertTrue(check_browser_version('MSIE', '9.0'));
+        $this->assertFalse(check_browser_version('MSIE', '10'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['10.0']['Windows 8'];
+        $this->assertTrue(check_browser_version('MSIE'));
+        $this->assertTrue(check_browser_version('MSIE', 0));
+        $this->assertTrue(check_browser_version('MSIE', '5.0'));
+        $this->assertTrue(check_browser_version('MSIE', '9.0'));
+        $this->assertTrue(check_browser_version('MSIE', '10'));
+        $this->assertFalse(check_browser_version('MSIE', '11'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['10.0i']['Windows 8'];
+        $this->assertTrue(check_browser_version('MSIE'));
+        $this->assertTrue(check_browser_version('MSIE', 0));
+        $this->assertTrue(check_browser_version('MSIE', '5.0'));
+        $this->assertTrue(check_browser_version('MSIE', '9.0'));
+        $this->assertTrue(check_browser_version('MSIE', '10'));
+        $this->assertFalse(check_browser_version('MSIE', '11'));
+
         $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Firefox']['2.0']['Windows XP'];
         $this->assertTrue(check_browser_version('Firefox'));
         $this->assertTrue(check_browser_version('Firefox', '1.5'));
         $this->assertFalse(check_browser_version('Firefox', '3.0'));
+        $this->assertTrue(check_browser_version('Gecko', '2'));
+        $this->assertTrue(check_browser_version('Gecko', 20030516));
+        $this->assertTrue(check_browser_version('Gecko', 20051106));
+        $this->assertTrue(check_browser_version('Gecko', 2006010100));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Firefox']['1.0.6']['Windows XP'];
+        $this->assertTrue(check_browser_version('Firefox'));
+        $this->assertTrue(check_browser_version('Gecko', '1'));
+        $this->assertFalse(check_browser_version('Gecko', 20030516));
+        $this->assertFalse(check_browser_version('Gecko', 20051106));
+        $this->assertFalse(check_browser_version('Gecko', 2006010100));
+        $this->assertFalse(check_browser_version('Firefox', '1.5'));
+        $this->assertFalse(check_browser_version('Firefox', '3.0'));
+        $this->assertFalse(check_browser_version('Gecko', '2'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Firefox']['2.0']['Windows XP'];
+        $this->assertTrue(check_browser_version('Firefox'));
+        $this->assertTrue(check_browser_version('Firefox', '1.5'));
+        $this->assertTrue(check_browser_version('Gecko', '1'));
+        $this->assertTrue(check_browser_version('Gecko', '2'));
+        $this->assertTrue(check_browser_version('Gecko', 20030516));
+        $this->assertTrue(check_browser_version('Gecko', 20051106));
+        $this->assertTrue(check_browser_version('Gecko', 2006010100));
+        $this->assertFalse(check_browser_version('Firefox', '3.0'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Firefox']['3.6']['Linux'];
+        $this->assertTrue(check_browser_version('Firefox'));
+        $this->assertTrue(check_browser_version('Firefox', '1.5'));
+        $this->assertTrue(check_browser_version('Firefox', '3.0'));
+        $this->assertTrue(check_browser_version('Gecko', '2'));
+        $this->assertTrue(check_browser_version('Gecko', '3.6'));
+        $this->assertTrue(check_browser_version('Gecko', 20030516));
+        $this->assertTrue(check_browser_version('Gecko', 20051106));
+        $this->assertTrue(check_browser_version('Gecko', 2006010100));
+        $this->assertFalse(check_browser_version('Firefox', '4'));
+        $this->assertFalse(check_browser_version('Firefox', '10'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Firefox']['3.6']['Linux'];
+        $this->assertTrue(check_browser_version('Firefox'));
+        $this->assertTrue(check_browser_version('Firefox', '1.5'));
+        $this->assertTrue(check_browser_version('Firefox', '3.0'));
+        $this->assertTrue(check_browser_version('Gecko', '2'));
+        $this->assertTrue(check_browser_version('Gecko', '3.6'));
+        $this->assertTrue(check_browser_version('Gecko', 20030516));
+        $this->assertTrue(check_browser_version('Gecko', 20051106));
+        $this->assertTrue(check_browser_version('Gecko', 2006010100));
+        $this->assertFalse(check_browser_version('Firefox', '4'));
+        $this->assertFalse(check_browser_version('Firefox', '10'));
+        $this->assertFalse(check_browser_version('Firefox', '18'));
+        $this->assertFalse(check_browser_version('Gecko', '4'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Firefox']['15.0a2']['Windows'];
+        $this->assertTrue(check_browser_version('Firefox'));
+        $this->assertTrue(check_browser_version('Firefox', '1.5'));
+        $this->assertTrue(check_browser_version('Firefox', '3.0'));
+        $this->assertTrue(check_browser_version('Gecko', '2'));
+        $this->assertTrue(check_browser_version('Gecko', '3.6'));
+        $this->assertTrue(check_browser_version('Gecko', '15.0'));
+        $this->assertTrue(check_browser_version('Gecko', 20030516));
+        $this->assertTrue(check_browser_version('Gecko', 20051106));
+        $this->assertTrue(check_browser_version('Gecko', 2006010100));
+        $this->assertTrue(check_browser_version('Firefox', '4'));
+        $this->assertTrue(check_browser_version('Firefox', '10'));
+        $this->assertTrue(check_browser_version('Firefox', '15'));
+        $this->assertFalse(check_browser_version('Firefox', '18'));
+        $this->assertFalse(check_browser_version('Gecko', '18'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Firefox']['18.0']['Mac OS X'];
+        $this->assertTrue(check_browser_version('Firefox'));
+        $this->assertTrue(check_browser_version('Firefox', '1.5'));
+        $this->assertTrue(check_browser_version('Firefox', '3.0'));
+        $this->assertTrue(check_browser_version('Gecko', '2'));
+        $this->assertTrue(check_browser_version('Gecko', '3.6'));
+        $this->assertTrue(check_browser_version('Gecko', '15.0'));
+        $this->assertTrue(check_browser_version('Gecko', '18.0'));
+        $this->assertTrue(check_browser_version('Gecko', 20030516));
+        $this->assertTrue(check_browser_version('Gecko', 20051106));
+        $this->assertTrue(check_browser_version('Gecko', 2006010100));
+        $this->assertTrue(check_browser_version('Firefox', '4'));
+        $this->assertTrue(check_browser_version('Firefox', '10'));
+        $this->assertTrue(check_browser_version('Firefox', '15'));
+        $this->assertTrue(check_browser_version('Firefox', '18'));
+        $this->assertFalse(check_browser_version('Firefox', '19'));
+        $this->assertFalse(check_browser_version('Gecko', '19'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['SeaMonkey']['2.0']['Windows'];
+
+        $this->assertTrue(check_browser_version('Gecko', '2'));
+        $this->assertTrue(check_browser_version('Gecko', 20030516));
+        $this->assertTrue(check_browser_version('Gecko', 20051106));
+        $this->assertTrue(check_browser_version('Gecko', 2006010100));
+        $this->assertFalse(check_browser_version('Gecko', '3.6'));
+        $this->assertFalse(check_browser_version('Gecko', '4.0'));
+        $this->assertFalse(check_browser_version('Firefox'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['SeaMonkey']['2.1']['Linux'];
+        $this->assertTrue(check_browser_version('Gecko', '2'));
+        $this->assertTrue(check_browser_version('Gecko', '3.6'));
+        $this->assertTrue(check_browser_version('Gecko', '4.0'));
+        $this->assertTrue(check_browser_version('Gecko', 20030516));
+        $this->assertTrue(check_browser_version('Gecko', 20051106));
+        $this->assertTrue(check_browser_version('Gecko', 2006010100));
+        $this->assertTrue(check_browser_version('Firefox'));
+        $this->assertTrue(check_browser_version('Firefox', 4.0));
+        $this->assertFalse(check_browser_version('Firefox', 5));
+        $this->assertFalse(check_browser_version('Gecko', '18.0'));
+
     }
 
     function test_get_browser_version_classes() {
@@ -277,6 +418,18 @@ class moodlelib_testcase extends advanced_testcase {
 
         $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['8.0']['Windows Vista'];
         $this->assertEquals(array('ie', 'ie8'), get_browser_version_classes());
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['9.0']['Windows 7'];
+        $this->assertEquals(array('ie', 'ie9'), get_browser_version_classes());
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['9.0i']['Windows 7'];
+        $this->assertEquals(array('ie', 'ie9'), get_browser_version_classes());
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['10.0']['Windows 8'];
+        $this->assertEquals(array('ie', 'ie10'), get_browser_version_classes());
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['10.0i']['Windows 8'];
+        $this->assertEquals(array('ie', 'ie10'), get_browser_version_classes());
 
         $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Firefox']['2.0']['Windows XP'];
         $this->assertEquals(array('gecko', 'gecko18'), get_browser_version_classes());
@@ -719,13 +872,52 @@ class moodlelib_testcase extends advanced_testcase {
     function test_clean_param_file() {
         $this->assertEquals(clean_param('correctfile.txt', PARAM_FILE), 'correctfile.txt');
         $this->assertEquals(clean_param('b\'a<d`\\/fi:l>e.t"x|t', PARAM_FILE), 'badfile.txt');
-        $this->assertEquals(clean_param('../parentdirfile.txt', PARAM_FILE), 'parentdirfile.txt');
+        $this->assertEquals(clean_param('../parentdirfile.txt', PARAM_FILE), '..parentdirfile.txt');
+        $this->assertEquals(clean_param('../../grandparentdirfile.txt', PARAM_FILE), '....grandparentdirfile.txt');
+        $this->assertEquals(clean_param('..\winparentdirfile.txt', PARAM_FILE), '..winparentdirfile.txt');
+        $this->assertEquals(clean_param('..\..\wingrandparentdir.txt', PARAM_FILE), '....wingrandparentdir.txt');
+        $this->assertEquals(clean_param('myfile.a.b.txt', PARAM_FILE), 'myfile.a.b.txt');
+        $this->assertEquals(clean_param('myfile..a..b.txt', PARAM_FILE), 'myfile..a..b.txt');
+        $this->assertEquals(clean_param('myfile.a..b...txt', PARAM_FILE), 'myfile.a..b...txt');
+        $this->assertEquals(clean_param('myfile.a.txt', PARAM_FILE), 'myfile.a.txt');
+        $this->assertEquals(clean_param('myfile...txt', PARAM_FILE), 'myfile...txt');
+        $this->assertEquals(clean_param('...jpg', PARAM_FILE), '...jpg');
+        $this->assertEquals(clean_param('.a.b.', PARAM_FILE), '.a.b.');
+        $this->assertEquals(clean_param('.', PARAM_FILE), '');
+        $this->assertEquals(clean_param('..', PARAM_FILE), '');
+        $this->assertEquals(clean_param('...', PARAM_FILE), '...');
+        $this->assertEquals(clean_param('. . . .', PARAM_FILE), '. . . .');
+        $this->assertEquals(clean_param('dontrtrim.me. .. .. . ', PARAM_FILE), 'dontrtrim.me. .. .. . ');
+        $this->assertEquals(clean_param(' . .dontltrim.me', PARAM_FILE), ' . .dontltrim.me');
+        $this->assertEquals(clean_param("here is a tab\t.txt", PARAM_FILE), 'here is a tab.txt');
+        $this->assertEquals(clean_param("here is a line\r\nbreak.txt", PARAM_FILE), 'here is a linebreak.txt');
+
         //The following behaviours have been maintained although they seem a little odd
         $this->assertEquals(clean_param('funny:thing', PARAM_FILE), 'funnything');
         $this->assertEquals(clean_param('./currentdirfile.txt', PARAM_FILE), '.currentdirfile.txt');
         $this->assertEquals(clean_param('c:\temp\windowsfile.txt', PARAM_FILE), 'ctempwindowsfile.txt');
         $this->assertEquals(clean_param('/home/user/linuxfile.txt', PARAM_FILE), 'homeuserlinuxfile.txt');
         $this->assertEquals(clean_param('~/myfile.txt', PARAM_FILE), '~myfile.txt');
+    }
+
+    function test_clean_param_path() {
+        $this->assertEquals(clean_param('correctfile.txt', PARAM_PATH), 'correctfile.txt');
+        $this->assertEquals(clean_param('b\'a<d`\\/fi:l>e.t"x|t', PARAM_PATH), 'bad/file.txt');
+        $this->assertEquals(clean_param('../parentdirfile.txt', PARAM_PATH), '/parentdirfile.txt');
+        $this->assertEquals(clean_param('../../grandparentdirfile.txt', PARAM_PATH), '/grandparentdirfile.txt');
+        $this->assertEquals(clean_param('..\winparentdirfile.txt', PARAM_PATH), '/winparentdirfile.txt');
+        $this->assertEquals(clean_param('..\..\wingrandparentdir.txt', PARAM_PATH), '/wingrandparentdir.txt');
+        $this->assertEquals(clean_param('funny:thing', PARAM_PATH), 'funnything');
+        $this->assertEquals(clean_param('./././here', PARAM_PATH), './here');
+        $this->assertEquals(clean_param('./currentdirfile.txt', PARAM_PATH), './currentdirfile.txt');
+        $this->assertEquals(clean_param('c:\temp\windowsfile.txt', PARAM_PATH), 'c/temp/windowsfile.txt');
+        $this->assertEquals(clean_param('/home/user/linuxfile.txt', PARAM_PATH), '/home/user/linuxfile.txt');
+        $this->assertEquals(clean_param('/home../user ./.linuxfile.txt', PARAM_PATH), '/home../user ./.linuxfile.txt');
+        $this->assertEquals(clean_param('~/myfile.txt', PARAM_PATH), '~/myfile.txt');
+        $this->assertEquals(clean_param('~/../myfile.txt', PARAM_PATH), '~/myfile.txt');
+        $this->assertEquals(clean_param('/..b../.../myfile.txt', PARAM_PATH), '/..b../.../myfile.txt');
+        $this->assertEquals(clean_param('..b../.../myfile.txt', PARAM_PATH), '..b../.../myfile.txt');
+        $this->assertEquals(clean_param('/super//slashes///', PARAM_PATH), '/super/slashes/');
     }
 
     function test_clean_param_username() {
@@ -790,9 +982,23 @@ class moodlelib_testcase extends advanced_testcase {
             '0'                              => '0',
             '0.0'                            => '0.0',
             '0.5'                            => '0.5',
+            '9.0'                            => '9.0',
+            '-9.0'                           => '-9.0',
+            '+9.0'                           => '+9.0',
+            '9.5'                            => '9.5',
+            '-9.5'                           => '-9.5',
+            '+9.5'                           => '+9.5',
+            '12.0'                           => '12.0',
+            '-12.0'                          => '-12.0',
+            '+12.0'                          => '+12.0',
+            '12.5'                           => '12.5',
             '-12.5'                          => '-12.5',
             '+12.5'                          => '+12.5',
+            '13.0'                           => '13.0',
+            '-13.0'                          => '-13.0',
+            '+13.0'                          => '+13.0',
             '13.5'                           => '',
+            '+13.5'                          => '',
             '-13.5'                          => '',
             '0.2'                            => '');
 
@@ -1202,46 +1408,46 @@ class moodlelib_testcase extends advanced_testcase {
         $longvalue = str_repeat('a', 1334);
         try {
             set_user_preference('_test_long_user_preference', $longvalue);
-            $this->assertFail('Exception expected - longer than 1333 chars not allowed as preference value');
-        } catch (Exception $e) {
-            $this->assertTrue($e instanceof coding_exception);
+            $this->fail('Exception expected - longer than 1333 chars not allowed as preference value');
+        } catch (coding_exception $ex) {
+            $this->assertTrue(true);
         }
 
         //test invalid params
         try {
             set_user_preference('_test_user_preferences_pref', array());
-            $this->assertFail('Exception expected - array not valid preference value');
-        } catch (Exception $ex) {
+            $this->fail('Exception expected - array not valid preference value');
+        } catch (coding_exception $ex) {
             $this->assertTrue(true);
         }
         try {
             set_user_preference('_test_user_preferences_pref', new stdClass);
-            $this->assertFail('Exception expected - class not valid preference value');
-        } catch (Exception $ex) {
+            $this->fail('Exception expected - class not valid preference value');
+        } catch (coding_exception $ex) {
             $this->assertTrue(true);
         }
         try {
-            set_user_preference('_test_user_preferences_pref', 1, array('xx'=>1));
-            $this->assertFail('Exception expected - user instance expected');
-        } catch (Exception $ex) {
+            set_user_preference('_test_user_preferences_pref', 1, array('xx' => 1));
+            $this->fail('Exception expected - user instance expected');
+        } catch (coding_exception $ex) {
             $this->assertTrue(true);
         }
         try {
             set_user_preference('_test_user_preferences_pref', 1, 'abc');
-            $this->assertFail('Exception expected - user instance expected');
-        } catch (Exception $ex) {
+            $this->fail('Exception expected - user instance expected');
+        } catch (coding_exception $ex) {
             $this->assertTrue(true);
         }
         try {
             set_user_preference('', 1);
-            $this->assertFail('Exception expected - invalid name accepted');
-        } catch (Exception $ex) {
+            $this->fail('Exception expected - invalid name accepted');
+        } catch (coding_exception $ex) {
             $this->assertTrue(true);
         }
         try {
             set_user_preference('1', 1);
-            $this->assertFail('Exception expected - invalid name accepted');
-        } catch (Exception $ex) {
+            $this->fail('Exception expected - invalid name accepted');
+        } catch (coding_exception $ex) {
             $this->assertTrue(true);
         }
 
@@ -1896,5 +2102,344 @@ class moodlelib_testcase extends advanced_testcase {
         $this->assertFalse($result);
 
         $this->resetDebugging();
+    }
+
+    /**
+     * Test function convert_to_array()
+     */
+    public function test_convert_to_array() {
+        // check that normal classes are converted to arrays the same way as (array) would do
+        $obj = new stdClass();
+        $obj->prop1 = 'hello';
+        $obj->prop2 = array('first', 'second', 13);
+        $obj->prop3 = 15;
+        $this->assertEquals(convert_to_array($obj), (array)$obj);
+
+        // check that context object (with iterator) is converted to array properly
+        $obj = get_system_context();
+        $ar = array(
+            'id'           => $obj->id,
+            'contextlevel' => $obj->contextlevel,
+            'instanceid'   => $obj->instanceid,
+            'path'         => $obj->path,
+            'depth'        => $obj->depth
+        );
+        $this->assertEquals(convert_to_array($obj), $ar);
+    }
+
+    /**
+     * Test the function date_format_string().
+     */
+    function test_date_format_string() {
+        global $CFG;
+
+        // Forcing locale and timezone.
+        $oldlocale = setlocale(LC_TIME, '0');
+        if ($CFG->ostype == 'WINDOWS') {
+            setlocale(LC_TIME, 'English_Australia.1252');
+        } else {
+            setlocale(LC_TIME, 'en_AU.UTF-8');
+        }
+        $systemdefaulttimezone = date_default_timezone_get();
+        date_default_timezone_set('Australia/Perth');
+
+        $tests = array(
+            array(
+                'tz' => 99,
+                'str' => '%A, %d %B %Y, %I:%M %p',
+                'expected' => 'Saturday, 01 January 2011, 06:00 PM'
+            ),
+            array(
+                'tz' => 0,
+                'str' => '%A, %d %B %Y, %I:%M %p',
+                'expected' => 'Saturday, 01 January 2011, 10:00 AM'
+            ),
+            array(
+                'tz' => -12,
+                'str' => '%A, %d %B %Y, %I:%M %p',
+                'expected' => 'Saturday, 01 January 2011, 10:00 AM'
+            ),
+            // Following tests pass on Windows only because en lang pack does
+            // not contain localewincharset, in real life lang pack maintainers
+            // may use only characters that are present in localewincharset
+            // in format strings!
+            array(
+                'tz' => 99,
+                'str' => 'Žluťoučký koníček %A',
+                'expected' => 'Žluťoučký koníček Saturday'
+            ),
+            array(
+                'tz' => 99,
+                'str' => '言語設定言語 %A',
+                'expected' => '言語設定言語 Saturday'
+            ),
+            array(
+                'tz' => 99,
+                'str' => '简体中文简体 %A',
+                'expected' => '简体中文简体 Saturday'
+            ),
+        );
+
+        // Note: date_format_string() uses the timezone only to differenciate
+        // the server time from the UTC time. It does not modify the timestamp.
+        // Hence similar results for timezones <= 13.
+        // On different systems case of AM PM changes so compare case insensitive.
+        foreach ($tests as $test) {
+            $str = date_format_string(1293876000, $test['str'], $test['tz']);
+            $this->assertEquals(textlib::strtolower($test['expected']), textlib::strtolower($str));
+        }
+
+        // Restore system default values.
+        date_default_timezone_set($systemdefaulttimezone);
+        setlocale(LC_TIME, $oldlocale);
+    }
+
+    public function test_get_config() {
+        global $CFG;
+
+        $this->resetAfterTest();
+
+        // Preparation.
+        set_config('phpunit_test_get_config_1', 'test 1');
+        set_config('phpunit_test_get_config_2', 'test 2', 'mod_forum');
+        if (!is_array($CFG->config_php_settings)) {
+            $CFG->config_php_settings = array();
+        }
+        $CFG->config_php_settings['phpunit_test_get_config_3'] = 'test 3';
+
+        if (!is_array($CFG->forced_plugin_settings)) {
+            $CFG->forced_plugin_settings = array();
+        }
+        if (!array_key_exists('mod_forum', $CFG->forced_plugin_settings)) {
+            $CFG->forced_plugin_settings['mod_forum'] = array();
+        }
+        $CFG->forced_plugin_settings['mod_forum']['phpunit_test_get_config_4'] = 'test 4';
+        $CFG->phpunit_test_get_config_5 = 'test 5';
+
+        // Testing.
+        $this->assertEquals('test 1', get_config('core', 'phpunit_test_get_config_1'));
+        $this->assertEquals('test 2', get_config('mod_forum', 'phpunit_test_get_config_2'));
+        $this->assertEquals('test 3', get_config('core', 'phpunit_test_get_config_3'));
+        $this->assertEquals('test 4', get_config('mod_forum', 'phpunit_test_get_config_4'));
+        $this->assertFalse(get_config('core', 'phpunit_test_get_config_5'));
+        $this->assertFalse(get_config('core', 'phpunit_test_get_config_x'));
+        $this->assertFalse(get_config('mod_forum', 'phpunit_test_get_config_x'));
+
+        // Test config we know to exist.
+        $this->assertEquals($CFG->dataroot, get_config('core', 'dataroot'));
+        $this->assertEquals($CFG->phpunit_dataroot, get_config('core', 'phpunit_dataroot'));
+        $this->assertEquals($CFG->dataroot, get_config('core', 'phpunit_dataroot'));
+        $this->assertEquals(get_config('core', 'dataroot'), get_config('core', 'phpunit_dataroot'));
+
+        // Test setting a config var that already exists.
+        set_config('phpunit_test_get_config_1', 'test a');
+        $this->assertEquals('test a', $CFG->phpunit_test_get_config_1);
+        $this->assertEquals('test a', get_config('core', 'phpunit_test_get_config_1'));
+
+        // Test cache invalidation.
+        $cache = cache::make('core', 'config');
+        $this->assertInternalType('array', $cache->get('core'));
+        $this->assertInternalType('array', $cache->get('mod_forum'));
+        set_config('phpunit_test_get_config_1', 'test b');
+        $this->assertFalse($cache->get('core'));
+        set_config('phpunit_test_get_config_4', 'test c', 'mod_forum');
+        $this->assertFalse($cache->get('mod_forum'));
+    }
+
+    function test_get_max_upload_sizes() {
+        // Test with very low limits so we are not affected by php upload limits.
+        // Test activity limit smallest.
+        $sitebytes = 102400;
+        $coursebytes = 51200;
+        $modulebytes = 10240;
+        $result = get_max_upload_sizes($sitebytes, $coursebytes, $modulebytes);
+
+        $this->assertEquals('Activity upload limit (10KB)', $result['0']);
+        $this->assertEquals(2, count($result));
+
+        // Test course limit smallest.
+        $sitebytes = 102400;
+        $coursebytes = 10240;
+        $modulebytes = 51200;
+        $result = get_max_upload_sizes($sitebytes, $coursebytes, $modulebytes);
+
+        $this->assertEquals('Course upload limit (10KB)', $result['0']);
+        $this->assertEquals(2, count($result));
+
+        // Test site limit smallest.
+        $sitebytes = 10240;
+        $coursebytes = 102400;
+        $modulebytes = 51200;
+        $result = get_max_upload_sizes($sitebytes, $coursebytes, $modulebytes);
+
+        $this->assertEquals('Site upload limit (10KB)', $result['0']);
+        $this->assertEquals(2, count($result));
+
+        // Test site limit not set.
+        $sitebytes = 0;
+        $coursebytes = 102400;
+        $modulebytes = 51200;
+        $result = get_max_upload_sizes($sitebytes, $coursebytes, $modulebytes);
+
+        $this->assertEquals('Activity upload limit (50KB)', $result['0']);
+        $this->assertEquals(3, count($result));
+
+        $sitebytes = 0;
+        $coursebytes = 51200;
+        $modulebytes = 102400;
+        $result = get_max_upload_sizes($sitebytes, $coursebytes, $modulebytes);
+
+        $this->assertEquals('Course upload limit (50KB)', $result['0']);
+        $this->assertEquals(3, count($result));
+
+        // Test custom bytes in range.
+        $sitebytes = 102400;
+        $coursebytes = 51200;
+        $modulebytes = 51200;
+        $custombytes = 10240;
+        $result = get_max_upload_sizes($sitebytes, $coursebytes, $modulebytes, $custombytes);
+
+        $this->assertEquals(3, count($result));
+
+        // Test custom bytes in range but non-standard.
+        $sitebytes = 102400;
+        $coursebytes = 51200;
+        $modulebytes = 51200;
+        $custombytes = 25600;
+        $result = get_max_upload_sizes($sitebytes, $coursebytes, $modulebytes, $custombytes);
+
+        $this->assertEquals(4, count($result));
+
+        // Test custom bytes out of range.
+        $sitebytes = 102400;
+        $coursebytes = 51200;
+        $modulebytes = 51200;
+        $custombytes = 102400;
+        $result = get_max_upload_sizes($sitebytes, $coursebytes, $modulebytes, $custombytes);
+
+        $this->assertEquals(3, count($result));
+
+        // Test custom bytes out of range and non-standard.
+        $sitebytes = 102400;
+        $coursebytes = 51200;
+        $modulebytes = 51200;
+        $custombytes = 256000;
+        $result = get_max_upload_sizes($sitebytes, $coursebytes, $modulebytes, $custombytes);
+
+        $this->assertEquals(3, count($result));
+    }
+
+    /**
+     * Test function password_is_legacy_hash().
+     */
+    public function test_password_is_legacy_hash() {
+        // Well formed md5s should be matched.
+        foreach (array('some', 'strings', 'to_check!') as $string) {
+            $md5 = md5($string);
+            $this->assertTrue(password_is_legacy_hash($md5));
+        }
+        // Strings that are not md5s should not be matched.
+        foreach (array('', AUTH_PASSWORD_NOT_CACHED, 'IPW8WTcsWNgAWcUS1FBVHegzJnw5M2jOmYkmfc8z.xdBOyC4Caeum') as $notmd5) {
+            $this->assertFalse(password_is_legacy_hash($notmd5));
+        }
+    }
+
+    /**
+     * Test function validate_internal_user_password().
+     */
+    public function test_validate_internal_user_password() {
+        if (password_compat_not_supported()) {
+            // If bcrypt is not properly supported test legacy md5 hashes instead.
+            // Can't hardcode these as we don't know the site's password salt.
+            $validhashes = array(
+                'pw' => hash_internal_user_password('pw'),
+                'abc' => hash_internal_user_password('abc'),
+                'C0mP1eX_&}<?@*&%` |\"' => hash_internal_user_password('C0mP1eX_&}<?@*&%` |\"'),
+                'ĩńťėŕňăţĩōŋāĹ' => hash_internal_user_password('ĩńťėŕňăţĩōŋāĹ')
+            );
+        } else {
+            // Otherwise test bcrypt hashes.
+            $validhashes = array(
+                'pw' => '$2y$10$LOSDi5eaQJhutSRun.OVJ.ZSxQZabCMay7TO1KmzMkDMPvU40zGXK',
+                'abc' => '$2y$10$VWTOhVdsBbWwtdWNDRHSpewjd3aXBQlBQf5rBY/hVhw8hciarFhXa',
+                'C0mP1eX_&}<?@*&%` |\"' => '$2y$10$3PJf.q.9ywNJlsInPbqc8.IFeSsvXrGvQLKRFBIhVu1h1I3vpIry6',
+                'ĩńťėŕňăţĩōŋāĹ' => '$2y$10$3A2Y8WpfRAnP3czJiSv6N.6Xp0T8hW3QZz2hUCYhzyWr1kGP1yUve'
+            );
+        }
+
+        foreach ($validhashes as $password => $hash) {
+            $user = new stdClass();
+            $user->auth = 'manual';
+            $user->password = $hash;
+            // The correct password should be validated.
+            $this->assertTrue(validate_internal_user_password($user, $password));
+            // An incorrect password should not be validated.
+            $this->assertFalse(validate_internal_user_password($user, 'badpw'));
+        }
+    }
+
+    /**
+     * Test function hash_internal_user_password().
+     */
+    public function test_hash_internal_user_password() {
+        $passwords = array('pw', 'abc123', 'C0mP1eX_&}<?@*&%` |\"', 'ĩńťėŕňăţĩōŋāĹ');
+
+        // Check that some passwords that we convert to hashes can
+        // be validated.
+        foreach ($passwords as $password) {
+            $hash = hash_internal_user_password($password);
+            $fasthash = hash_internal_user_password($password, true);
+            $user = new stdClass();
+            $user->auth = 'manual';
+            $user->password = $hash;
+            $this->assertTrue(validate_internal_user_password($user, $password));
+
+            if (password_compat_not_supported()) {
+                // If bcrypt is not properly supported make sure the passwords are in md5 format.
+                $this->assertTrue(password_is_legacy_hash($hash));
+            } else {
+                // Otherwise they should not be in md5 format.
+                $this->assertFalse(password_is_legacy_hash($hash));
+
+                // Check that cost factor in hash is correctly set.
+                $this->assertRegExp('/\$10\$/', $hash);
+                $this->assertRegExp('/\$04\$/', $fasthash);
+            }
+        }
+    }
+
+    /**
+     * Test function update_internal_user_password().
+     */
+    public function test_update_internal_user_password() {
+        global $DB;
+        $this->resetAfterTest();
+        $passwords = array('password', '1234', 'changeme', '****');
+        foreach ($passwords as $password) {
+            $user = $this->getDataGenerator()->create_user(array('auth'=>'manual'));
+            update_internal_user_password($user, $password);
+            // The user object should have been updated.
+            $this->assertTrue(validate_internal_user_password($user, $password));
+            // The database field for the user should also have been updated to the
+            // same value.
+            $this->assertEquals($user->password, $DB->get_field('user', 'password', array('id' => $user->id)));
+        }
+
+        $user = $this->getDataGenerator()->create_user(array('auth'=>'manual'));
+        // Manually set the user's password to the md5 of the string 'password'.
+        $DB->set_field('user', 'password', '5f4dcc3b5aa765d61d8327deb882cf99', array('id' => $user->id));
+
+        // Update the password.
+        update_internal_user_password($user, 'password');
+
+        if (password_compat_not_supported()) {
+            // If bcrypt not properly supported the password should remain as an md5 hash.
+            $expected_hash = hash_internal_user_password('password', true);
+            $this->assertEquals($user->password, $expected_hash);
+            $this->assertTrue(password_is_legacy_hash($user->password));
+        } else {
+            // Otherwise password should have been updated to a bcrypt hash.
+            $this->assertFalse(password_is_legacy_hash($user->password));
+        }
     }
 }

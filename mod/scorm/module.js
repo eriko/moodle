@@ -14,20 +14,20 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Javascript helper function for IMS Content Package module.
+ * Javascript helper function for SCORM module.
  *
  * @package   mod-scorm
  * @copyright 2009 Petr Skoda (http://skodak.org)
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-mod_scorm_next = null;
-mod_scorm_prev = null;
+mod_scorm_launch_next_sco = null;
+mod_scorm_launch_prev_sco = null;
 mod_scorm_activate_item = null;
 
 M.mod_scorm = {};
 
-M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launch_sco) {
+M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launch_sco, scoes_nav) {
     var scorm_disable_toc = false;
     var scorm_hide_nav = true;
     var scorm_hide_toc = true;
@@ -40,6 +40,7 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
         scorm_disable_toc = true;
     }
 
+    scoes_nav = JSON.parse(scoes_nav);
     var scorm_layout_widget;
     var scorm_current_node;
     var scorm_buttons = [];
@@ -87,8 +88,8 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
             }
 
             if (node.title) {
-            	var el_scorm_api = document.getElementById("external-scormapi");
-            	el_scorm_api.parentNode.removeChild(el_scorm_api);
+                var el_scorm_api = document.getElementById("external-scormapi");
+                el_scorm_api.parentNode.removeChild(el_scorm_api);
                 el_scorm_api = document.createElement('script');
                 el_scorm_api.setAttribute('id','external-scormapi');
                 el_scorm_api.setAttribute('type','text/javascript');
@@ -166,11 +167,15 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
          * @return void
          */
         var scorm_fixnav = function() {
-            scorm_buttons[0].set('disabled', (scorm_skipprev(scorm_current_node) == null || scorm_skipprev(scorm_current_node).title == null));
-            scorm_buttons[1].set('disabled', (scorm_prev(scorm_current_node) == null || scorm_prev(scorm_current_node).title == null));
+            scorm_buttons[0].set('disabled', (scorm_skipprev(scorm_current_node) == null || scorm_skipprev(scorm_current_node).title == null ||
+                        scoes_nav[launch_sco].hideprevious == 1));
+            scorm_buttons[1].set('disabled', (scorm_prev(scorm_current_node) == null || scorm_prev(scorm_current_node).title == null ||
+                        scoes_nav[launch_sco].hideprevious == 1));
             scorm_buttons[2].set('disabled', (scorm_up(scorm_current_node) == null) || scorm_up(scorm_current_node).title == null);
-            scorm_buttons[3].set('disabled', (scorm_next(scorm_current_node) == null) || scorm_next(scorm_current_node).title == null);
-            scorm_buttons[4].set('disabled', (scorm_skipnext(scorm_current_node) == null || scorm_skipnext(scorm_current_node).title == null));
+            scorm_buttons[3].set('disabled', (((scorm_next(scorm_current_node) == null || scorm_next(scorm_current_node).title == null) &&
+                        (scoes_nav[launch_sco].flow != 1)) || (scoes_nav[launch_sco].hidecontinue == 1)));
+            scorm_buttons[4].set('disabled', (scorm_skipnext(scorm_current_node) == null || scorm_skipnext(scorm_current_node).title == null ||
+                        scoes_nav[launch_sco].hidecontinue == 1));
         };
 
         var scorm_resize_parent = function() {
@@ -253,9 +258,21 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
             }
         };
 
-        var scorm_up = function(node) {
+        // Handle AJAX Request
+        var scorm_ajax_request = function(url, datastring) {
+            var myRequest = NewHttpReq();
+            var result = DoRequest(myRequest, url + datastring);
+            return result;
+        };
+
+        var scorm_up = function(node, update_launch_sco) {
             var node = scorm_tree_node.getHighlightedNode();
-            if (node.depth > 0) {
+            if (node.depth > 0 && typeof scoes_nav[launch_sco].parentscoid != 'undefined') {
+                var parentscoid = scoes_nav[launch_sco].parentscoid;
+                node.parent.title = scoes_nav[parentscoid].url;
+                if (update_launch_sco) {
+                    launch_sco = parentscoid;
+                }
                 return node.parent;
             }
             return null;
@@ -269,43 +286,131 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
             }
         };
 
-        var scorm_prev = function(node) {
-            if (node.previousSibling && node.previousSibling.children.length) {
-                return scorm_lastchild(node.previousSibling);
+        var scorm_prev = function(node, update_launch_sco) {
+            if (node.previousSibling && node.previousSibling.children.length &&
+                    typeof scoes_nav[launch_sco].prevscoid != 'undefined') {
+                var node = scorm_lastchild(node.previousSibling);
+                if (node) {
+                    var prevscoid = scoes_nav[launch_sco].prevscoid;
+                    node.title = scoes_nav[prevscoid].url;
+                    if (update_launch_sco) {
+                        launch_sco = prevscoid;
+                    }
+                    return node;
+                } else {
+                    return null;
+                }
             }
-            return scorm_skipprev(node);
+            return scorm_skipprev(node, update_launch_sco);
         };
 
-        var scorm_skipprev = function(node) {
-            if (node.previousSibling) {
+        var scorm_skipprev = function(node, update_launch_sco) {
+            if (node.previousSibling && typeof scoes_nav[launch_sco].prevsibling != 'undefined') {
+                var prevsibling = scoes_nav[launch_sco].prevsibling;
+                node.previousSibling.title = scoes_nav[prevsibling].url;
+                if (update_launch_sco) {
+                    launch_sco = prevsibling;
+                }
                 return node.previousSibling;
-            } else if (node.depth > 0) {
+            } else if (node.depth > 0 && typeof scoes_nav[launch_sco].parentscoid != 'undefined') {
+                var parentscoid = scoes_nav[launch_sco].parentscoid;
+                node.parent.title = scoes_nav[parentscoid].url;
+                if (update_launch_sco) {
+                    launch_sco = parentscoid;
+                }
                 return node.parent;
             }
             return null;
         };
 
-        var scorm_next = function(node) {
+        var scorm_next = function(node, update_launch_sco) {
             if (node === false) {
                 return scorm_tree_node.getRoot().children[0];
             }
-            if (node.children.length) {
-                return node.children[0];
+            if (node.children.length && typeof scoes_nav[launch_sco].nextscoid != 'undefined') {
+                var node = node.children[0];
+                var nextscoid = scoes_nav[launch_sco].nextscoid;
+                node.title = scoes_nav[nextscoid].url;
+                if (update_launch_sco) {
+                    launch_sco = nextscoid;
+                }
+                return node;
             }
-            return scorm_skipnext(node);
+            return scorm_skipnext(node, update_launch_sco);
         };
 
-        var scorm_skipnext = function(node) {
-            if (node.nextSibling) {
+        var scorm_skipnext = function(node, update_launch_sco) {
+            if (node.nextSibling && typeof scoes_nav[launch_sco].nextsibling != 'undefined') {
+                var nextsibling = scoes_nav[launch_sco].nextsibling;
+                node.nextSibling.title = scoes_nav[nextsibling].url;
+                if (update_launch_sco) {
+                    launch_sco = nextsibling;
+                }
                 return node.nextSibling;
-            } else if (node.depth > 0) {
-                return scorm_skipnext(node.parent);
+            } else if (node.depth > 0 && typeof scoes_nav[launch_sco].parentscoid != 'undefined') {
+                var parentscoid = scoes_nav[launch_sco].parentscoid;
+                if (update_launch_sco) {
+                    launch_sco = parentscoid;
+                }
+                return scorm_skipnext(node.parent, update_launch_sco);
             }
             return null;
         };
 
-        mod_scorm_next = scorm_next;
-        mod_scorm_prev = scorm_prev;
+        // Launch prev sco
+        var scorm_launch_prev_sco = function() {
+                var result = null;
+                if (scoes_nav[launch_sco].flow == 1) {
+                var datastring = scoes_nav[launch_sco].url + '&function=scorm_seq_flow&request=backward';
+                result = scorm_ajax_request(M.cfg.wwwroot + '/mod/scorm/datamodels/sequencinghandler.php?', datastring);
+                mod_scorm_seq = encodeURIComponent(result);
+                result = JSON.parse (result);
+                if (typeof result.nextactivity.id != undefined) {
+                        var node = scorm_prev(scorm_tree_node.getHighlightedNode())
+                        if (node == null) {
+                                // Avoid use of TreeView for Navigation
+                                node = scorm_tree_node.getHighlightedNode();
+                        }
+                        node.title = scoes_nav[result.nextactivity.id].url;
+                        launch_sco = result.nextactivity.id;
+                        scorm_activate_item(node);
+                        scorm_fixnav();
+                } else {
+                        scorm_activate_item(scorm_prev(scorm_tree_node.getHighlightedNode(), true));
+                }
+             } else {
+                 scorm_activate_item(scorm_prev(scorm_tree_node.getHighlightedNode(), true));
+             }
+        };
+
+        // Launch next sco
+        var scorm_launch_next_sco = function () {
+                var result = null;
+                if (scoes_nav[launch_sco].flow == 1) {
+                var datastring = scoes_nav[launch_sco].url + '&function=scorm_seq_flow&request=forward';
+                result = scorm_ajax_request(M.cfg.wwwroot + '/mod/scorm/datamodels/sequencinghandler.php?', datastring);
+                mod_scorm_seq = encodeURIComponent(result);
+                result = JSON.parse (result);
+                if (typeof result.nextactivity.id != undefined) {
+                        var node = scorm_next(scorm_tree_node.getHighlightedNode())
+                        if (node == null) {
+                                // Avoid use of TreeView for Navigation
+                                node = scorm_tree_node.getHighlightedNode();
+                        }
+                        node.title = scoes_nav[result.nextactivity.id].url;
+                        launch_sco = result.nextactivity.id;
+                        scorm_activate_item(node);
+                        scorm_fixnav();
+                } else {
+                        scorm_activate_item(scorm_next(scorm_tree_node.getHighlightedNode(), true));
+                }
+             } else {
+                 scorm_activate_item(scorm_next(scorm_tree_node.getHighlightedNode(), true));
+             }
+        };
+
+        mod_scorm_launch_prev_sco = scorm_launch_prev_sco;
+        mod_scorm_launch_next_sco = scorm_launch_next_sco;
 
         // layout
         Y.YUI2.widget.LayoutUnit.prototype.STR_COLLAPSE = M.str.moodle.hide;
@@ -403,36 +508,29 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
             scorm_buttons[3] = new Y.YUI2.widget.Button('nav_next');
             scorm_buttons[4] = new Y.YUI2.widget.Button('nav_skipnext');
             scorm_buttons[0].on('click', function(ev) {
-                scorm_activate_item(scorm_skipprev(scorm_tree_node.getHighlightedNode()));
+                scorm_activate_item(scorm_skipprev(scorm_tree_node.getHighlightedNode(), true));
             });
             scorm_buttons[1].on('click', function(ev) {
-                scorm_activate_item(scorm_prev(scorm_tree_node.getHighlightedNode()));
+                scorm_launch_prev_sco();
             });
             scorm_buttons[2].on('click', function(ev) {
-                scorm_activate_item(scorm_up(scorm_tree_node.getHighlightedNode()));
+                scorm_activate_item(scorm_up(scorm_tree_node.getHighlightedNode(), true));
             });
             scorm_buttons[3].on('click', function(ev) {
-                scorm_activate_item(scorm_next(scorm_tree_node.getHighlightedNode()));
+                scorm_launch_next_sco();
             });
             scorm_buttons[4].on('click', function(ev) {
-                scorm_activate_item(scorm_skipnext(scorm_tree_node.getHighlightedNode()));
+                scorm_activate_item(scorm_skipnext(scorm_tree_node.getHighlightedNode(), true));
             });
             scorm_nav_panel.render();
         }
 
         // finally activate the chosen item
         var scorm_first_url = tree.getRoot().children[0];
-        var nxt = false;
-        while (nxt = scorm_next(nxt)) {
-            if (nxt.title) {
-                expression = new RegExp('^.*?scoid=' + launch_sco + '.*?$');
-                matches = nxt.title.match(expression);
-                if (matches != null) {
-                    scorm_first_url = nxt;
-                    break;
-                }
-            }
+        if (scorm_first_url == null) { // This is probably a single sco with no children (AICC Direct uses this).
+            scorm_first_url = tree.getRoot();
         }
+        scorm_first_url.title = scoes_nav[launch_sco].url;
         scorm_activate_item(scorm_first_url);
 
         // resizing
@@ -445,29 +543,84 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
     });
 };
 
+M.mod_scorm.connectPrereqCallback = {
 
-function scorm_get_prev() {
-    YUI.use('yui2-treeview', function(Y) {
-        scorm_tree_node = Y.YUI2.widget.TreeView.getTree('scorm_tree');
-        if (scorm_tree_node) {
-            var hnode = scorm_tree_node.getHighlightedNode();
-            var prev = mod_scorm_prev(hnode);
-            if (prev) {
-                mod_scorm_activate_item(prev);
-            }
-        }
-    });
-}
+    success: function(o) {
+        YUI().use('yui2-treeview', 'yui2-layout', function(Y) {
+            // MDL-29159 The core version of getContentHtml doesn't escape text properly.
+            Y.YUI2.widget.TextNode.prototype.getContentHtml = function() {
+                var sb = [];
+                sb[sb.length] = this.href ? '<a' : '<span';
+                sb[sb.length] = ' id="' + Y.YUI2.lang.escapeHTML(this.labelElId) + '"';
+                sb[sb.length] = ' class="' + Y.YUI2.lang.escapeHTML(this.labelStyle) + '"';
+                if (this.href) {
+                    sb[sb.length] = ' href="' + Y.YUI2.lang.escapeHTML(this.href) + '"';
+                    sb[sb.length] = ' target="' + Y.YUI2.lang.escapeHTML(this.target) + '"';
+                }
+                if (this.title) {
+                    sb[sb.length] = ' title="' + Y.YUI2.lang.escapeHTML(this.title) + '"';
+                }
+                sb[sb.length] = ' >';
+                sb[sb.length] = this.label;
+                sb[sb.length] = this.href?'</a>':'</span>';
+                return sb.join("");
+            };
 
-function scorm_get_next() {
-    YUI.use('yui2-treeview', function(Y) {
-        scorm_tree_node = Y.YUI2.widget.TreeView.getTree('scorm_tree');
-        if (scorm_tree_node) {
-            var hnode = scorm_tree_node.getHighlightedNode();
-            var next = mod_scorm_next(hnode);
-            if (next) {
-                mod_scorm_activate_item(next);
+            if (o.responseText !== undefined) {
+                var tree = new Y.YUI2.widget.TreeView('scorm_tree');
+                if (scorm_tree_node && o.responseText) {
+                    var hnode = scorm_tree_node.getHighlightedNode();
+                    var hidx = null;
+                    if (hnode) {
+                        hidx = hnode.index + scorm_tree_node.getNodeCount();
+                    }
+                    // all gone
+                    var root_node = scorm_tree_node.getRoot();
+                    while (root_node.children.length > 0) {
+                        scorm_tree_node.removeNode(root_node.children[0]);
+                    }
+                }
+                // make sure the temporary tree element is not there
+                var el_old_tree = document.getElementById('scormtree123');
+                if (el_old_tree) {
+                    el_old_tree.parentNode.removeChild(el_old_tree);
+                }
+                var el_new_tree = document.createElement('div');
+                var pagecontent = document.getElementById("page-content");
+                el_new_tree.setAttribute('id','scormtree123');
+                el_new_tree.innerHTML = o.responseText;
+                // make sure it doesnt show
+                el_new_tree.style.display = 'none';
+                pagecontent.appendChild(el_new_tree)
+                // ignore the first level element as this is the title
+                var startNode = el_new_tree.firstChild.firstChild;
+                if (startNode.tagName == 'LI') {
+                    // go back to the beginning
+                    startNode = el_new_tree;
+                }
+                //var sXML = new XMLSerializer().serializeToString(startNode);
+                scorm_tree_node.buildTreeFromMarkup('scormtree123');
+                var el = document.getElementById('scormtree123');
+                el.parentNode.removeChild(el);
+                scorm_tree_node.expandAll();
+                scorm_tree_node.render();
+                if (hidx != null) {
+                    hnode = scorm_tree_node.getNodeByIndex(hidx);
+                    if (hnode) {
+                        hnode.highlight();
+                        scorm_layout_widget = Y.YUI2.widget.Layout.getLayoutById('scorm_layout');
+                        var left = scorm_layout_widget.getUnitByPosition('left');
+                        if (left.expanded) {
+                            hnode.focus();
+                        }
+                    }
+                }
             }
-        }
-    });
-}
+        });
+    },
+
+    failure: function(o) {
+        // TODO: do some sort of error handling.
+    }
+
+};
