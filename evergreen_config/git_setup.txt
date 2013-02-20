@@ -1,0 +1,45 @@
+#setup
+git clone git@github.com:eriko/moodle.git moodle24.git
+cd moodle24.git
+git remote add upstream https://github.com/moodle/moodle.git
+git fetch upstream
+git merge upstream/master
+git checkout -b MOODLE_24_STABLE upstream/MOODLE_24_STABLE
+git push -u origin MOODLE_24_STABLE
+
+
+#get updates from upstream
+git checkout MOODLE_24_STABLE
+git fetch upstream/MOODLE_24_STABLE
+git merge upstream/MOODLE_24_STABLE
+
+#push updates to origin
+git push origin
+
+
+#add submodules
+git submodule add  git@github.com:eriko/moodle_imsenterprise2.git enrol/imsenterprise2
+git submodule add  git://github.com/andreev-artem/moodle_mod_attforblock.git mod/attforblock
+git submodule add  https://github.com/lsuits/quickmail blocks/quickmail
+git submodule add  https://github.com/bostelm/moodle-mod_scheduler.git mod/scheduler
+git submodule add  https://github.com/bmbrands/theme_bootstrap.git theme/bootstrap
+git submodule add  https://github.com/betollaque/moodle-theme_moodle2tablet.git theme/moodle2tablet
+git submodule add   https://github.com/betollaque/moodle-theme_moodle2mobile.git theme/moodle2mobile
+git submodule add  https://github.com/nrobbins/moodle_format_days.git course/days
+git submodule add  https://github.com/piersharding/moodle-tool_uploadcourse.git admin/tool/uploadcourse
+
+
+#Move plugins to the correct branches
+cd mod/addforblock
+git checkout MDL_24
+cd ../../
+cd mod/scheduler
+git checkout MOODLE_23_STABLE
+
+git  add mod/attforblock mod/scheduler
+git commit -m " set versions of the plugins to use"
+
+#manually add the onetopic format from
+#https://moodle.org/plugins/view.php?plugin=format_onetopic
+#to course/formats
+
