@@ -32,3 +32,7 @@ $string['cc-nd'] = 'Creative Commons - NoDerivs';
 $string['cc-sa'] = 'Creative Commons - ShareAlike';
 $string['public'] = 'Public domain';
 $string['unknown'] = 'Other';
+$string['iown'] = 'All rights reserved - I own the rights to this work';
+$string['cpr-permission'] = 'Copyrighted - I have gotten permission from the copyright owner';
+$string['cpr-fairuse'] = 'Copyrighted - I have determined that this is acceptable under fair use';
+
