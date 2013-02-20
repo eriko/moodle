@@ -1,0 +1,27 @@
+[submodule "enrol/imsenterprise2"]
+	path = enrol/imsenterprise2
+	url = git@github.com:eriko/moodle_imsenterprise2.git
+[submodule "mod/attforblock"]
+	path = mod/attforblock
+	url = git://github.com/andreev-artem/moodle_mod_attforblock.git
+[submodule "blocks/quickmail"]
+	path = blocks/quickmail
+	url = https://github.com/lsuits/quickmail
+[submodule "mod/scheduler"]
+	path = mod/scheduler
+	url = https://github.com/bostelm/moodle-mod_scheduler.git
+[submodule "theme/bootstrap"]
+	path = theme/bootstrap
+	url = https://github.com/bmbrands/theme_bootstrap.git
+[submodule "theme/moodle2tablet"]
+	path = theme/moodle2tablet
+	url = https://github.com/betollaque/moodle-theme_moodle2tablet.git
+[submodule "theme/moodle2mobile"]
+	path = theme/moodle2mobile
+	url = https://github.com/betollaque/moodle-theme_moodle2mobile.git
+[submodule "course/days"]
+	path = course/days
+	url = https://github.com/nrobbins/moodle_format_days.git
+[submodule "admin/tool/uploadcourse"]
+	path = admin/tool/uploadcourse
+	url = https://github.com/piersharding/moodle-tool_uploadcourse.git
