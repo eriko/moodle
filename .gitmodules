@@ -25,3 +25,6 @@
 [submodule "admin/tool/uploadcourse"]
 	path = admin/tool/uploadcourse
 	url = https://github.com/piersharding/moodle-tool_uploadcourse.git
+[submodule "admin/tool/uploadcoursecategory"]
+	path = admin/tool/uploadcoursecategory
+	url = https://git.gitorious.org/moodle-tool_uploadcoursecategory/moodle-tool_uploadcoursecategory.git
