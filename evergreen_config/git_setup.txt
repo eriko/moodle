@@ -6,11 +6,12 @@ git fetch upstream
 git merge upstream/master
 git checkout -b MOODLE_24_STABLE upstream/MOODLE_24_STABLE
 git push -u origin MOODLE_24_STABLE
-
+or
+ git branch --set-upstream MOODLE_24_STABLE upstream/MOODLE_24_STABLE
 
 #get updates from upstream
 git checkout MOODLE_24_STABLE
-git fetch upstream/MOODLE_24_STABLE
+git fetch upstream
 git merge upstream/MOODLE_24_STABLE
 
 #push updates to origin
@@ -26,20 +27,22 @@ git submodule add  https://github.com/bmbrands/theme_bootstrap.git theme/bootstr
 git submodule add  https://github.com/betollaque/moodle-theme_moodle2tablet.git theme/moodle2tablet
 git submodule add   https://github.com/betollaque/moodle-theme_moodle2mobile.git theme/moodle2mobile
 git submodule add  https://github.com/nrobbins/moodle_format_days.git course/days
-git submodule add  https://github.com/piersharding/moodle-tool_uploadcourse.git admin/tool/uploadcourse
+git submodule add git://gitorious.org/moodle-tool_uploadcourse/moodle-tool_uploadcourse.git admin/tool/uploadcourse
 git submodule add https://git.gitorious.org/moodle-tool_uploadcoursecategory/moodle-tool_uploadcoursecategory.git admin/tool/uploadcoursecategory
 
 
 
 
-#Move plugins to the correct branches
+
 ### Deploy on production evergreen22
-  git clone git@github.com:eriko/moodle.git html.new -b MOODLE_24_STABLE
+  git clone -b MOODLE_24_STABLE git@github.com:eriko/moodle.git html.new
+  #Move plugins to the correct branches
   cd html.new
   git submodule init
   git submodule update
   cd ..
   cp html/config.php html.new/config.php
+  #Remove trailing ?> at the end of config.php
   cd html.new/enrol/imsenterprise2/
   git checkout master
   cd ../../
@@ -50,7 +53,7 @@ git submodule add https://git.gitorious.org/moodle-tool_uploadcoursecategory/moo
   git checkout MOODLE_23_STABLE
   cd ../../
   cd theme/bootstrap
-  git checkout master
+  git checkout moodle_24
   cd ../../
   cd admin/tool/uploadcourse
   git checkout master
@@ -60,14 +63,7 @@ git submodule add https://git.gitorious.org/moodle-tool_uploadcoursecategory/moo
   #cp html/enrol/imsenterprise2/version.php html.new/enrol/imsenterprise2/
   mv html html.old && mv html.new html
 
-cd mod/attforblock
-git checkout MDL_24
-cd ../../
-cd mod/scheduler
-git checkout MOODLE_23_STABLE
 
-git  add mod/attforblock mod/scheduler
-git commit -m " set versions of the plugins to use"
 
 #manually add the onetopic format from
 #https://moodle.org/plugins/view.php?plugin=format_onetopic
