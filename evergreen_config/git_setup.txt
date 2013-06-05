@@ -23,15 +23,12 @@ git submodule add  git@github.com:eriko/moodle_imsenterprise2.git enrol/imsenter
 git submodule add  git://github.com/andreev-artem/moodle_mod_attforblock.git mod/attforblock
 git submodule add  https://github.com/lsuits/quickmail blocks/quickmail
 git submodule add  https://github.com/bostelm/moodle-mod_scheduler.git mod/scheduler
-#git submodule add  https://github.com/bmbrands/theme_bootstrap.git theme/bootstrap
-git submodule add  https://github.com/betollaque/moodle-theme_moodle2tablet.git theme/moodle2tablet
-git submodule add   https://github.com/betollaque/moodle-theme_moodle2mobile.git theme/moodle2mobile
-git submodule add  https://github.com/nrobbins/moodle_format_days.git course/days
-git submodule add git://gitorious.org/moodle-tool_uploadcourse/moodle-tool_uploadcourse.git admin/tool/uploadcourse
-git submodule add https://git.gitorious.org/moodle-tool_uploadcoursecategory/moodle-tool_uploadcoursecategory.git admin/tool/uploadcoursecategory
-
-
-
+#git submodule add https://github.com/bmbrands/theme_bootstrap.git theme/bootstrap
+git submodule add https://github.com/betollaque/moodle-theme_moodle2tablet.git theme/moodle2tablet
+git submodule add https://github.com/betollaque/moodle-theme_moodle2mobile.git theme/moodle2mobile
+git submodule add https://github.com/nrobbins/moodle_format_days.git course/days
+git submodule add https://github.com/piersharding/moodle-tool_uploadcourse.git admin/tool/uploadcourse
+git submodule add https://github.com/piersharding/moodle-tool_uploadcoursecategory.git admin/tool/uploadcoursecategory
 
 
 ### Deploy on production evergreen22

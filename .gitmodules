@@ -21,7 +21,7 @@
 	url = https://github.com/nrobbins/moodle_format_days.git
 [submodule "admin/tool/uploadcourse"]
 	path = admin/tool/uploadcourse
-	url = git://gitorious.org/moodle-tool_uploadcourse/moodle-tool_uploadcourse.git
+	url = https://github.com/piersharding/moodle-tool_uploadcourse.git
 [submodule "admin/tool/uploadcoursecategory"]
 	path = admin/tool/uploadcoursecategory
-	url = https://git.gitorious.org/moodle-tool_uploadcoursecategory/moodle-tool_uploadcoursecategory.git
+	url = https://github.com/piersharding/moodle-tool_uploadcoursecategory.git
