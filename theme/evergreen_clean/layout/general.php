@@ -102,10 +102,13 @@ echo $OUTPUT->doctype() ?>
 
 <?php echo $OUTPUT->standard_top_of_body_html() ?>
 
-<header role="banner" class="navbar <?php echo $navbar_inverse ?> navbar-fixed-top">
+<header role="banner" class="navbar <?php echo $navbar_inverse ?> navbar-static-top">
+	<div class="evergreen">
+		<a href="http://www.evergreen.edu"><img class="" src="http://wikis.evergreen.edu/computing/skins/common/images/evergreen_logo221.png" width="221px" height="32px"></a>
+	</div>
     <nav role="navigation" class="navbar-inner">
-        <div class="container-fluid">
-            <a class="brand" href="<?php echo $CFG->wwwroot;?>"><?php echo $SITE->shortname; ?></a>
+		<div class="container-fluid">
+		    <a class="brand" href="<?php echo $CFG->wwwroot;?>/my/"><?php echo $SITE->shortname; ?></a>
             <a class="btn btn-navbar" data-toggle="workaround-collapse" data-target=".nav-collapse">
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>

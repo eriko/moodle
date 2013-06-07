@@ -38,7 +38,14 @@ $THEME->name = 'evergreen_clean';
 //
 $THEME->doctype = 'html5';
 $THEME->parents = array('bootstrapbase');
-$THEME->sheets = array('custom');
+//exclude css files from bootstrapbase
+$THEME->parents_exclude_sheets = array(
+'bootstrapbase' => array(
+'moodle',
+'editor'
+)
+);
+$THEME->sheets = array('custom', 'moodle', 'editor', 'evergreen');
 $THEME->supportscssoptimisation = false;
 $THEME->yuicssmodules = array();
 
