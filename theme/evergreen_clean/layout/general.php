@@ -104,7 +104,7 @@ echo $OUTPUT->doctype() ?>
 
 <header role="banner" class="navbar <?php echo $navbar_inverse ?> navbar-static-top">
 	<div class="evergreen">
-		<a href="http://www.evergreen.edu"><img class="" src="http://wikis.evergreen.edu/computing/skins/common/images/evergreen_logo221.png" width="221px" height="32px"></a>
+		<a href="http://www.evergreen.edu"><img src="<?php echo $OUTPUT->pix_url('evergreenlogo', 'theme'); ?>" alt="The Evergreen State College" width="221px" height="32px"></a>
 	</div>
     <nav role="navigation" class="navbar-inner">
 		<div class="container-fluid">
