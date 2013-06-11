@@ -1,0 +1,19 @@
+The following needs to be done after the update to Moodle 2.5
+
+Add Help menu
+	Site admin > Appearance > Themes > Theme Settings > Custom menu items
+	add the following:
+	Help
+	-Moodle help|http://wikis.evergreen.edu/computing/index.php/Moodle_Guide
+	-Contact us|https://help.evergreen.edu/contact/ac/index
+	
+Add sitewide footer to Evergreen Clean AND Evergreen Archive themes
+	Site admin > Appearance > Themes > Evergreen Clean > Footnote
+	add:
+	Contact Academic Computing | Evergreen Moodle Guide
+	Copyright Compliance
+	
+	links to:
+	Contact Academic Computing https://help.evergreen.edu/contact/ac/index
+	Evergreen Moodle Guide http://wikis.evergreen.edu/computing/index.php/Moodle_Guide
+	Copyright Compliance http://wikis.evergreen.edu/itsi/images/c/c3/Copyright_handout.pdf
