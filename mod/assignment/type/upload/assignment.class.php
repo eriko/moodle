@@ -1085,9 +1085,10 @@ class assignment_upload extends assignment_base {
         }
         $filename = str_replace(' ', '_', clean_filename($this->course->shortname.'-'.$this->assignment->name.'-'.$groupname.$this->assignment->id.".zip")); //name of new zip file.
         foreach ($submissions as $submission) {
-            // If assignment is open and submission is not finalized and marking button enabled then don't add it to zip.
+            // If assignment is open and submission is not finalized then don't add it to zip.
+            // unless "send for marking" is not turned on in which take everything that is available.
             $submissionstatus = $this->is_finalized($submission);
-            if ($this->isopen() && empty($submissionstatus) && !empty($this->assignment->var4)) {
+            if ($this->isopen() && ($this->can_finalize($submission) &&  empty($submissionstatus))) {
                 continue;
             }
             $a_userid = $submission->userid; //get userid
