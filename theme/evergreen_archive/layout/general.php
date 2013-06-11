@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Moodle's Evergreen Clean theme, an example of how to make a Bootstrap theme
+ * Moodle's Evergreen archive theme, an example of how to make a Bootstrap theme
  *
  * DO NOT MODIFY THIS THEME!
  * COPY IT FIRST, THEN RENAME THE COPY AND MODIFY IT INSTEAD.
@@ -23,7 +23,7 @@
  * For full information about creating Moodle themes, see:
  * http://docs.moodle.org/dev/Themes_2.0
  *
- * @package   theme_evergreen_clean
+ * @package   theme_evergreen_archive
  * @copyright 2013 Moodle, moodle.org
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -104,7 +104,7 @@ echo $OUTPUT->doctype() ?>
 
 <header role="banner" class="navbar <?php echo $navbar_inverse ?> navbar-static-top">
 	<div class="evergreen">
-		<a href="http://www.evergreen.edu"><img class="" src="http://wikis.evergreen.edu/computing/skins/common/images/evergreen_logo221.png" width="221px" height="32px"></a>
+		<a href="http://www.evergreen.edu"><img src="<?php echo $OUTPUT->pix_url('evergreenlogo_archive', 'theme'); ?>" alt="The Evergreen State College" width="394px" height="32px"></a>
 	</div>
     <nav role="navigation" class="navbar-inner">
 		<div class="container-fluid">
