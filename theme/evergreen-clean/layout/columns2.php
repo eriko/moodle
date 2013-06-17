@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 // Get the HTML for the settings bits.
-$html = theme_clean_get_html_for_settings($OUTPUT, $PAGE);
+$html = theme_evergreen-clean_get_html_for_settings($OUTPUT, $PAGE);
 
 echo $OUTPUT->doctype() ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
@@ -30,7 +30,10 @@ echo $OUTPUT->doctype() ?>
 
 <?php echo $OUTPUT->standard_top_of_body_html() ?>
 
-<header role="banner" class="navbar navbar-fixed-top<?php echo $html->navbarclass ?>">
+<header role="banner" class="navbar navbar-static-top<?php echo $html->navbarclass ?>">
+	<div class="evergreen">
+		<a href="http://www.evergreen.edu"><img src="<?php echo $OUTPUT->pix_url('evergreenlogo', 'theme'); ?>" alt="The Evergreen State College" width="221px" height="32px"></a>
+	</div>
     <nav role="navigation" class="navbar-inner">
         <div class="container-fluid">
             <a class="brand" href="<?php echo $CFG->wwwroot;?>"><?php echo $SITE->shortname; ?></a>

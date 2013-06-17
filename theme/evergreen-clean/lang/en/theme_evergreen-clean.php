@@ -25,7 +25,7 @@
 $string['choosereadme'] = '
 <div class="clearfix">
 <div class="well">
-<h2> Evergreen Clean</h2>
+<h2> Evergreen-Clean</h2>
 <p><img class=img-polaroid src="clean/pix/screenshot.jpg" /></p>
 </div>
 <div class="well">
