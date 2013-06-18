@@ -20,7 +20,8 @@ Config.php	changes:
 /less directory copied from bootstrap base
 moodle.less and editor.less are recompiled local to the evergreen_clean theme to generate moodle.css and editor.css
 	moodle.less - set {padding-top: 0}
-	bootstrap/breadcrumb.less - set .breadcrumb {background:none}
+	bootstrap/breadcrumb.less - set .breadcrumb {background-color:none}
+	moodle/modules.less - .breadcrumb-button {margin-top: 10px;}
 	
 	To recompile less files
 		cd theme/evergreen_archive/less/
