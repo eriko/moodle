@@ -29,6 +29,7 @@ moodle.less and editor.less are recompiled local to the evergreen_clean theme to
 	
 layout/columns[1-3].php, secure.php
 	added <div class="evergreen"> for evergreen topbar with logo linked to www.evergreen.edu
+	added "/my/" to set brand to link to moodle/my at <a class="brand" href="<?php echo $CFG->wwwroot;?>/my/"><?php echo $SITE->shortname; ?></a>
 
 style/evergreen.css
 	.evergreen class styles evergreen topbar
