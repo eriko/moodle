@@ -1,10 +1,14 @@
-Evergreen Clean is a clone of the Clean theme, a child of bootstrapbase.
+evergreen_clean is a clone of the Clean theme, a child of bootstrapbase.
 
 Files modified:
+Rename /lang/en/theme_clean.php to theme_evergreen_clean.php
 
 Replaced 'clean_theme' with 'evergreen_clean_theme'
+	theme_evergreen_clean.php
 	config.php
-	general.php
+	columns1.php
+	columns2.php
+	columns3.php
 	lib.php
 	settings.php
 	version.php
@@ -22,7 +26,7 @@ moodle.less and editor.less are recompiled local to the evergreen_clean theme to
 		cd theme/evergreen_archive/less/
 		recess --compile --compress moodle.less > ../style/moodle.css	
 	
-layout/general.php
+layout/columns[1-3].php, secure.php
 	added <div class="evergreen"> for evergreen topbar with logo linked to www.evergreen.edu
 
 style/evergreen.css
@@ -32,4 +36,3 @@ style/evergreen.css
 	evergreenlogo.png added
 	favicon.ico - evergreen favicon added
 	screenshot.jpg - theme screenshot added
-	

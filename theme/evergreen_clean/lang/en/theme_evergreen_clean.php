@@ -25,7 +25,7 @@
 $string['choosereadme'] = '
 <div class="clearfix">
 <div class="well">
-<h2>Evergreen Clean</h2>
+<h2> Evergreen Clean</h2>
 <p><img class=img-polaroid src="evergreen_clean/pix/screenshot.jpg" /></p>
 </div>
 <div class="well">
@@ -42,7 +42,7 @@ Website: <a href="http://www.basbrands.nl">www.basbrands.nl</a>
 <h3>Report a bug:</h3>
 <p><a href="http://tracker.moodle.org">http://tracker.moodle.org</a></p>
 <h3>More information</h3>
-<p><a href="evergreen_clean/README.txt">How to copy and customise this theme.</a></p>
+<p><a href="clean/README.txt">How to copy and customise this theme.</a></p>
 </div></div>';
 
 $string['configtitle'] = 'Evergreen Clean';

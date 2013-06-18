@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Evergreen Clean theme, an example of how to make a Bootstrap theme
+ * Moodle's evergreen_clean theme, an example of how to make a Bootstrap theme
  *
  * DO NOT MODIFY THIS THEME!
  * COPY IT FIRST, THEN RENAME THE COPY AND MODIFY IT INSTEAD.
@@ -63,10 +63,7 @@ $THEME->plugins_exclude_sheets = array(
 $THEME->rendererfactory = 'theme_overridden_renderer_factory';
 $THEME->csspostprocess = 'evergreen_clean_process_css';
 
-$useragent = '';
-if (!empty($_SERVER['HTTP_USER_AGENT'])) {
-    $useragent = $_SERVER['HTTP_USER_AGENT'];
-}
-if (strpos($useragent, 'MSIE 8') || strpos($useragent, 'MSIE 7')) {
-    $THEME->javascripts[] = 'html5shiv';
-}
+$THEME->blockrtlmanipulations = array(
+    'side-pre' => 'side-post',
+    'side-post' => 'side-pre'
+);

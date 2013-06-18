@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 // Get the HTML for the settings bits.
-$html = theme_evergreen-clean_get_html_for_settings($OUTPUT, $PAGE);
+$html = theme_evergreen_clean_get_html_for_settings($OUTPUT, $PAGE);
 
 echo $OUTPUT->doctype() ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
