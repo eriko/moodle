@@ -161,7 +161,7 @@ TREE.prototype = {
                 }
             }).wire();
             M.block_navigation.expandablebranchcount++;
-            this.branches[branch.get('id')] = branch;
+            this.branches[this.get('id')] = branch;
         }
         if (M.block_navigation.expandablebranchcount > 0) {
             // Delegate some events to handle AJAX loading.
