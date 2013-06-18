@@ -25,7 +25,7 @@
 $string['choosereadme'] = '
 <div class="clearfix">
 <div class="well">
-<h2>Evergreen Archive</h2>
+<h2> Evergreen Archive</h2>
 <p><img class=img-polaroid src="evergreen_archive/pix/screenshot.jpg" /></p>
 </div>
 <div class="well">
@@ -42,10 +42,10 @@ Website: <a href="http://www.basbrands.nl">www.basbrands.nl</a>
 <h3>Report a bug:</h3>
 <p><a href="http://tracker.moodle.org">http://tracker.moodle.org</a></p>
 <h3>More information</h3>
-<p><a href="evergreen_archive/README.txt">How to copy and customise this theme.</a></p>
+<p><a href="clean/README.txt">How to copy and customise this theme.</a></p>
 </div></div>';
 
-$string['configtitle'] = 'Evergreen archive';
+$string['configtitle'] = 'Evergreen Archive';
 
 $string['customcss'] = 'Custom CSS';
 $string['customcssdesc'] = 'Whatever CSS rules you add to this textarea will be reflected in every page, making for easier customization of this theme.';
@@ -61,7 +61,7 @@ $string['logodesc'] = 'Please upload your custom logo here if you want to add it
 If the height of your logo is more than 75px add the following CSS rule to the Custom CSS box below.<br>
 a.logo {height: 100px;} or whatever height in pixels the logo is.';
 
-$string['pluginname'] = 'Evergreen archive';
+$string['pluginname'] = 'Evergreen Archive';
 
 $string['region-side-post'] = 'Right';
 $string['region-side-pre'] = 'Left';
