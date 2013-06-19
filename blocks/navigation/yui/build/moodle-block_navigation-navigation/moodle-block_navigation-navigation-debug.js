@@ -161,7 +161,7 @@ TREE.prototype = {
                 }
             }).wire();
             M.block_navigation.expandablebranchcount++;
-            this.branches[this.get('id')] = branch;
+            this.branches[branch.get('id')] = branch;
         }
         if (M.block_navigation.expandablebranchcount > 0) {
             // Delegate some events to handle AJAX loading.
@@ -391,11 +391,15 @@ BRANCH.prototype = {
     },
     /**
      * Attaches required events to the branch structure.
+     *
+     * @chainable
+     * @method wire
+     * @return {BRANCH} This function is chainable, it always returns itself.
      */
     wire : function() {
         this.node = this.node || Y.one('#'+this.get('id'));
         if (!this.node) {
-            return false;
+            return this;
         }
         if (this.get('expandable')) {
             this.node.setAttribute('data-expandable', '1');
