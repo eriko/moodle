@@ -21,11 +21,14 @@ Config.php	changes:
 moodle.less and editor.less are recompiled local to the evergreen_archive theme to generate moodle.css and editor.css
 	moodle.less - set {padding-top: 0}
 	bootstrap/breadcrumb.less - set .breadcrumb {background-color:none}
+	bootstrap/variables.less - changed @headings color to lighten 
+	bootstrap/type.less - change multiplier for headings to reduce size
 	moodle/modules.less - .breadcrumb-button {margin-top: 10px;}
 	
 	To recompile less files
 		cd theme/evergreen_archive/less/
-		recess --compile --compress moodle.less > ../style/moodle.css	
+		recess --compile --compress moodle.less > ../style/moodle.css
+		recess --compile --compress editor.less > ../style/editor.css	
 	
 layout/columns[1-3].php, secure.php
 	added <div class="evergreen"> for evergreen topbar with logo linked to www.evergreen.edu
