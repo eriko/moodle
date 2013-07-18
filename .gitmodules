@@ -25,3 +25,6 @@
 [submodule "admin/tool/uploadcoursecategory"]
 	path = admin/tool/uploadcoursecategory
 	url = https://github.com/piersharding/moodle-tool_uploadcoursecategory.git
+[submodule "mod/attendance"]
+	path = mod/attendance
+	url = https://github.com/danmarsden/moodle-mod_attendance.git
