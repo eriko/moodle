@@ -16,8 +16,8 @@
 [submodule "theme/moodle2mobile"]
 	path = theme/moodle2mobile
 	url = https://github.com/betollaque/moodle-theme_moodle2mobile.git
-[submodule "course/days"]
-	path = course/days
+[submodule "course/format/days"]
+	path = course/format/days
 	url = https://github.com/nrobbins/moodle_format_days.git
 [submodule "admin/tool/uploadcourse"]
 	path = admin/tool/uploadcourse
