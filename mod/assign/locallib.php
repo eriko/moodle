@@ -1144,7 +1144,7 @@ class assign {
                 if ($grade < 0) {
                     $displaygrade = '';
                 } else {
-                    $displaygrade = format_float($grade);
+                    $displaygrade = format_float($grade, 2);
                 }
                 $o .= '<label class="accesshide" for="quickgrade_' . $userid . '">' .
                        get_string('usergrade', 'assign') .
@@ -3382,9 +3382,9 @@ class assign {
             }
 
             $cangrade = has_capability('mod/assign:grade', $this->get_context());
-            // If there is feedback or a visible grade, show the summary.
-            if ((!empty($gradebookgrade->grade) && ($cangrade || !$gradebookgrade->hidden)) ||
-                    !$emptyplugins) {
+            // If there is a visible grade, show the summary.
+            if ((!empty($gradebookgrade->grade) || !$emptyplugins)
+                    && ($cangrade || !$gradebookgrade->hidden)) {
 
                 $gradefordisplay = null;
                 $gradeddate = null;
@@ -3394,7 +3394,7 @@ class assign {
                 // Only show the grade if it is not hidden in gradebook.
                 if (!empty($gradebookgrade->grade) && ($cangrade || !$gradebookgrade->hidden)) {
                     if ($controller = $gradingmanager->get_active_controller()) {
-                        $controller->set_grade_range(make_grades_menu($this->get_instance()->grade));
+                        $controller->set_grade_range(make_grades_menu($this->get_instance()->grade), $this->get_instance()->grade > 0);
                         $gradefordisplay = $controller->render_grade($PAGE,
                                                                      $grade->id,
                                                                      $gradingitem,
@@ -3491,7 +3491,7 @@ class assign {
 
             // Now get the gradefordisplay.
             if ($controller) {
-                $controller->set_grade_range(make_grades_menu($this->get_instance()->grade));
+                $controller->set_grade_range(make_grades_menu($this->get_instance()->grade), $this->get_instance()->grade > 0);
                 $grade->gradefordisplay = $controller->render_grade($PAGE,
                                                                      $grade->id,
                                                                      $gradingitem,
@@ -4880,6 +4880,7 @@ class assign {
         global $CFG, $USER;
 
         $grademenu = make_grades_menu($this->get_instance()->grade);
+        $allowgradedecimals = $this->get_instance()->grade > 0;
 
         $advancedgradingwarning = false;
         $gradingmanager = get_grading_manager($this->context, 'mod_assign', 'submissions');
@@ -4904,7 +4905,7 @@ class assign {
             }
         }
         if ($gradinginstance) {
-            $gradinginstance->get_controller()->set_grade_range($grademenu);
+            $gradinginstance->get_controller()->set_grade_range($grademenu, $allowgradedecimals);
         }
         return $gradinginstance;
     }
@@ -5264,6 +5265,13 @@ class assign {
         $submission->status = ASSIGN_SUBMISSION_STATUS_DRAFT;
         $this->update_submission($submission, $userid, true, $this->get_instance()->teamsubmission);
 
+        // Give each submission plugin a chance to process the reverting to draft.
+        $plugins = $this->get_submission_plugins();
+        foreach ($plugins as $plugin) {
+            if ($plugin->is_enabled() && $plugin->is_visible()) {
+                $plugin->revert_to_draft($submission);
+            }
+        }
         // Update the modified time on the grade (grader modified).
         $grade = $this->get_user_grade($userid, true);
         $grade->grader = $USER->id;
@@ -5300,6 +5308,15 @@ class assign {
             $userid = required_param('userid', PARAM_INT);
         }
 
+        // Give each submission plugin a chance to process the locking.
+        $plugins = $this->get_submission_plugins();
+        $submission = $this->get_user_submission($userid, false);
+        foreach ($plugins as $plugin) {
+            if ($plugin->is_enabled() && $plugin->is_visible()) {
+                $plugin->lock($submission);
+            }
+        }
+
         $flags = $this->get_user_flags($userid, true);
         $flags->locked = 1;
         $this->update_user_flags($flags);
@@ -5327,6 +5344,14 @@ class assign {
 
         if (!$userid) {
             $userid = required_param('userid', PARAM_INT);
+        }
+        // Give each submission plugin a chance to process the unlocking.
+        $plugins = $this->get_submission_plugins();
+        $submission = $this->get_user_submission($userid, false);
+        foreach ($plugins as $plugin) {
+            if ($plugin->is_enabled() && $plugin->is_visible()) {
+                $plugin->unlock($submission);
+            }
         }
 
         $flags = $this->get_user_flags($userid, true);
