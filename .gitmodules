@@ -1,9 +1,6 @@
 [submodule "enrol/imsenterprise2"]
 	path = enrol/imsenterprise2
 	url = git@github.com:eriko/moodle_imsenterprise2.git
-[submodule "mod/attforblock"]
-	path = mod/attforblock
-	url = git://github.com/andreev-artem/moodle_mod_attforblock.git
 [submodule "blocks/quickmail"]
 	path = blocks/quickmail
 	url = https://github.com/lsuits/quickmail
@@ -28,3 +25,6 @@
 [submodule "mod/attendance"]
 	path = mod/attendance
 	url = https://github.com/danmarsden/moodle-mod_attendance.git
+[submodule "blocks/attendance"]
+	path = blocks/attendance
+	url = https://github.com/danmarsden/moodle-block_attendance.git
