@@ -722,8 +722,13 @@ function quiz_grade_item_update($quiz, $grades = null) {
     if (!$params['hidden']) {
         // If the grade item is not hidden by the quiz logic, then we need to
         // hide it if the quiz is hidden from students.
-        $cm = get_coursemodule_from_instance('quiz', $quiz->id);
-        $params['hidden'] = !$cm->visible;
+        if (property_exists($quiz, 'visible')) {
+            // Saving the quiz form, and cm not yet updated in the database.
+            $params['hidden'] = !$quiz->visible;
+        } else {
+            $cm = get_coursemodule_from_instance('quiz', $quiz->id);
+            $params['hidden'] = !$cm->visible;
+        }
     }
 
     if ($grades  === 'reset') {
@@ -1751,8 +1756,14 @@ function quiz_question_pluginfile($course, $context, $component,
  */
 function quiz_page_type_list($pagetype, $parentcontext, $currentcontext) {
     $module_pagetype = array(
-        'mod-quiz-*'=>get_string('page-mod-quiz-x', 'quiz'),
-        'mod-quiz-edit'=>get_string('page-mod-quiz-edit', 'quiz'));
+        'mod-quiz-*'       => get_string('page-mod-quiz-x', 'quiz'),
+        'mod-quiz-view'    => get_string('page-mod-quiz-view', 'quiz'),
+        'mod-quiz-attempt' => get_string('page-mod-quiz-attempt', 'quiz'),
+        'mod-quiz-summary' => get_string('page-mod-quiz-summary', 'quiz'),
+        'mod-quiz-review'  => get_string('page-mod-quiz-review', 'quiz'),
+        'mod-quiz-edit'    => get_string('page-mod-quiz-edit', 'quiz'),
+        'mod-quiz-report'  => get_string('page-mod-quiz-report', 'quiz'),
+    );
     return $module_pagetype;
 }
 

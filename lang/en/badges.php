@@ -217,6 +217,7 @@ $string['error:connectionunknownreason'] = 'The connection was unsuccessful but 
 $string['error:clone'] = 'Cannot clone the badge.';
 $string['error:duplicatename'] = 'Badge with such name already exists in the system.';
 $string['error:externalbadgedoesntexist'] = 'Badge not found';
+$string['error:guestuseraccess'] = 'You are currently using guest access. To see badges you need to log in with your user account.';
 $string['error:invalidbadgeurl'] = 'Invalid badge issuer URL format.';
 $string['error:invalidcriteriatype'] = 'Invalid criteria type.';
 $string['error:invalidexpiredate'] = 'Expiry date has to be in the future.';
@@ -239,6 +240,7 @@ $string['error:personaneedsjs'] = 'Currently, Javascript is required to connect 
 $string['error:requesttimeout'] = 'The connection request timed out before it could complete.';
 $string['error:requesterror'] = 'The connection request failed (error code {$a}).';
 $string['error:save'] = 'Cannot save the badge.';
+$string['error:userdeleted'] = '{$a->user} (This user no longer exists in {$a->site})';
 $string['evidence'] = 'Evidence';
 $string['existingrecipients'] = 'Existing badge recipients';
 $string['expired'] = 'Expired';
@@ -276,9 +278,9 @@ $string['makeprivate'] = 'Make private';
 $string['makepublic'] = 'Make public';
 $string['managebadges'] = 'Manage badges';
 $string['message'] = 'Message body';
-$string['messagebody'] = '<p>You have been awarded a badge "%badgename%"!</p>
+$string['messagebody'] = '<p>You have been awarded the badge "%badgename%"!</p>
 <p>More information about this badge can be found at %badgelink%.</p>
-<p>If there is no badge attached to this email, you can manage and download it from {$a} page.</p>';
+<p>You can manage and download the badge from {$a}.</p>';
 $string['messagesubject'] = 'Congratulations! You just earned a badge!';
 $string['method'] = 'This criterion is complete when...';
 $string['mingrade'] = 'Minimum grade required';

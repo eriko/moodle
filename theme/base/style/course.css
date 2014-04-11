@@ -153,13 +153,9 @@ li.section.hidden span.commands a.editing_show {cursor:default;}
 
 .course_category_tree .category .numberofcourse {font-size: 0.85em;}
 
-.course_category_tree .controls {visibility: hidden;}
-.course_category_tree .controls div {display:inline;cursor:pointer;}
-.jsenabled .course_category_tree .controls {visibility: visible;}
-
 .course_category_tree .category>.info .name {background-image:url([[pix:moodle|t/collapsed_empty]]);background-repeat: no-repeat;background-position:center left;}
 .dir-rtl .course_category_tree .category>.info .name {background-image:url([[pix:moodle|t/collapsed_empty_rtl]]);background-position:center right;}
-.course_category_tree .category.with_children>.info .name {background-image:url([[pix:moodle|t/expanded]]);}
+.course_category_tree .category.with_children>.info .name {background-image:url([[pix:moodle|t/expanded]]);cursor: pointer;}
 .course_category_tree .category.with_children.collapsed>.info .name {background-image:url([[pix:moodle|t/collapsed]]);}
 .dir-rtl .course_category_tree .category.with_children.collapsed>.info .name {background-image:url([[pix:moodle|t/collapsed_rtl]]);}
 .course_category_tree .category.collapsed>.content {display:none;}
@@ -207,7 +203,7 @@ span.editinstructions {
 input.titleeditor { width: 330px; vertical-align: text-bottom; }
 
 /* Course drag and drop upload styles */
-#dndupload-status {width:40%;margin:0 30%;padding:6px;border:1px solid #ddd;text-align:center;background:#ffc;position:absolute;z-index:9999;box-shadow:2px 2px 5px 1px #ccc;border-radius:0px 0px 8px 8px;z-index: 0;}
+#dndupload-status {width:40%;margin:0 30%;padding:6px;border:1px solid #ddd;top:-5px;text-align:center;background:#ffc;position:absolute;left:0;box-shadow:2px 2px 5px 1px #ccc;border-radius:0px 0px 8px 8px;z-index: 0;}
 .dndupload-preview {color:#909090;border:1px dashed #909090;list-style:none; margin-top: .2em; padding: .3em; line-height: 16px;}
 .dndupload-preview img.icon { vertical-align: text-bottom; padding: 0;}
 .dndupload-progress-outer {width:70px;border:1px solid black;border-radius:4px;height:10px;display:inline-block;margin:0;padding:0;overflow:hidden;position:relative;}

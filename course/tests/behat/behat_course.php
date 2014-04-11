@@ -90,7 +90,7 @@ class behat_course extends behat_base {
     }
 
     /**
-     * Adds the selected activity/resource filling the form data with the specified field/value pairs.
+     * Adds the selected activity/resource filling the form data with the specified field/value pairs. Sections 0 and 1 are also allowed on frontpage.
      *
      * @When /^I add a "(?P<activity_or_resource_name_string>(?:[^"]|\\")*)" to section "(?P<section_number>\d+)" and I fill the form with:$/
      * @param string $activity The activity name
@@ -107,7 +107,7 @@ class behat_course extends behat_base {
     }
 
     /**
-     * Opens the activity chooser and opens the activity/resource form page.
+     * Opens the activity chooser and opens the activity/resource form page. Sections 0 and 1 are also allowed on frontpage.
      *
      * @Given /^I add a "(?P<activity_or_resource_name_string>(?:[^"]|\\")*)" to section "(?P<section_number>\d+)"$/
      * @throws ElementNotFoundException Thrown by behat_base::find
@@ -116,7 +116,19 @@ class behat_course extends behat_base {
      */
     public function i_add_to_section($activity, $section) {
 
-        $sectionxpath = "//li[@id='section-" . $section . "']";
+        if ($this->getSession()->getPage()->find('css', 'body#page-site-index') && (int)$section <= 1) {
+            // We are on the frontpage.
+            if ($section) {
+                // Section 1 represents the contents on the frontpage.
+                $sectionxpath = "//body[@id='page-site-index']/descendant::div[contains(concat(' ',normalize-space(@class),' '),' sitetopic ')]";
+            } else {
+                // Section 0 represents "Site main menu" block.
+                $sectionxpath = "//div[contains(concat(' ',normalize-space(@class),' '),' block_site_main_menu ')]";
+            }
+        } else {
+            // We are inside the course.
+            $sectionxpath = "//li[@id='section-" . $section . "']";
+        }
 
         $activityliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral(ucfirst($activity));
 
@@ -298,6 +310,18 @@ class behat_course extends behat_base {
         // Section should be hidden.
         $exception = new ExpectationException('The section is not hidden', $this->getSession());
         $this->find('xpath', $sectionxpath . "[contains(concat(' ', normalize-space(@class), ' '), ' hidden ')]", $exception);
+    }
+
+    /**
+     * Checks that all actiities in the specified section are hidden. You need to be in the course page. It can be used being logged as a student and as a teacher on editing mode.
+     *
+     * @Then /^all activities in section "(?P<section_number>\d+)" should be hidden$/
+     * @throws ExpectationException
+     * @throws ElementNotFoundException Thrown by behat_base::find
+     * @param int $sectionnumber
+     */
+    public function section_activities_should_be_hidden($sectionnumber) {
+        $sectionxpath = $this->section_exists($sectionnumber);
 
         // The checking are different depending on user permissions.
         if ($this->is_course_editor()) {
@@ -309,31 +333,19 @@ class behat_course extends behat_base {
             if ($activities = $this->get_section_activities($sectionxpath)) {
 
                 $dimmedexception = new ExpectationException('There are activities that are not dimmed', $this->getSession());
-                $visibilityexception = new ExpectationException('There are activities which visibility icons are clickable', $this->getSession());
                 foreach ($activities as $activity) {
-
                     // Dimmed.
                     $this->find('xpath', "//div[contains(concat(' ', normalize-space(@class), ' '), ' activityinstance ')]" .
                         "/a[contains(concat(' ', normalize-space(@class), ' '), ' dimmed ')]", $dimmedexception, $activity);
-
-                    // Non-JS browsers can not click on img elements.
-                    if ($this->running_javascript()) {
-                        // To check that the visibility is not clickable we check the funcionality rather than the applied style.
-                        $visibilityiconnode = $this->find('css', 'a.editing_show img', false, $activity);
-                        $visibilityiconnode->click();
-                    }
-
-                    // We ensure that we still see the show icon.
-                    $visibilityiconnode = $this->find('css', 'a.editing_show img', $visibilityexception, $activity);
                 }
             }
-
         } else {
             // There shouldn't be activities.
             if ($this->get_section_activities($sectionxpath)) {
                 throw new ExpectationException('There are activities in the section and they should be hidden', $this->getSession());
             }
         }
+
     }
 
     /**

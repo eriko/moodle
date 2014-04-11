@@ -782,22 +782,33 @@ class theme_config {
                 $plugins = get_plugin_list($type);
                 foreach ($plugins as $plugin=>$fulldir) {
                     if (!empty($excludes[$type]) and is_array($excludes[$type])
-                        and in_array($plugin, $excludes[$type])) {
+                            and in_array($plugin, $excludes[$type])) {
                         continue;
                     }
 
-                    $plugincontent = '';
+                    // Add main stylesheet.
                     $sheetfile = "$fulldir/styles.css";
                     if (is_readable($sheetfile)) {
                         $cssfiles['plugins'][$type.'_'.$plugin] = $sheetfile;
                     }
-                    $sheetthemefile = "$fulldir/styles_{$this->name}.css";
-                    if (is_readable($sheetthemefile)) {
-                        $cssfiles['plugins'][$type.'_'.$plugin.'_'.$this->name] = $sheetthemefile;
+
+                    // Create a list of candidate sheets from parents (direct parent last) and current theme.
+                    $candidates = array();
+                    foreach (array_reverse($this->parent_configs) as $parent_config) {
+                        $candidates[] = $parent_config->name;
                     }
+                    $candidates[] = $this->name;
+
+                    // Add the sheets found.
+                    foreach ($candidates as $candidate) {
+                        $sheetthemefile = "$fulldir/styles_{$candidate}.css";
+                        if (is_readable($sheetthemefile)) {
+                            $cssfiles['plugins'][$type.'_'.$plugin.'_'.$candidate] = $sheetthemefile;
+                        }
                     }
                 }
             }
+        }
 
         // find out wanted parent sheets
         $excludes = $this->resolve_excludes('parents_exclude_sheets');
@@ -1253,6 +1264,11 @@ class theme_config {
                     $this->usesvg = false;
                 } else if (check_browser_version('MSIE', 0) and !check_browser_version('MSIE', 9)) {
                     // IE < 9 doesn't support SVG. Say no.
+                    $this->usesvg = false;
+                } else if (check_browser_version('MSIE', 0) and !check_browser_version('MSIE', 10) and
+                        // IE running in Compatibility View?
+                        (preg_match("/MSIE 7.0/", $_SERVER['HTTP_USER_AGENT']) && preg_match("/Trident\/([0-9\.]+)/", $_SERVER['HTTP_USER_AGENT']))) {
+                    // IE 9 Compatibility View doesn't support SVG. Say no.
                     $this->usesvg = false;
                 } else if (preg_match('#Android +[0-2]\.#', $_SERVER['HTTP_USER_AGENT'])) {
                     // Android < 3 doesn't support SVG. Say no.

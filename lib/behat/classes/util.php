@@ -69,6 +69,11 @@ class behat_util extends testing_util {
             throw new coding_exception('This method can be only used by Behat CLI tool');
         }
 
+        $tables = $DB->get_tables(false);
+        if (!empty($tables)) {
+            behat_error(BEHAT_EXITCODE_INSTALLED);
+        }
+
         // New dataroot.
         self::reset_dataroot();
 
@@ -79,6 +84,10 @@ class behat_util extends testing_util {
         $options['shortname'] = self::BEHATSITENAME;
 
         install_cli_database($options, false);
+
+        // We need to keep the installed dataroot filedir files.
+        // So each time we reset the dataroot before running a test, the default files are still installed.
+        self::save_original_data_files();
 
         $frontpagesummary = new admin_setting_special_frontpagedesc();
         $frontpagesummary->write_setting(self::BEHATSITENAME);
