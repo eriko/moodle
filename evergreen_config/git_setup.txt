@@ -26,32 +26,46 @@ git submodule add  https://github.com/bostelm/moodle-mod_scheduler.git mod/sched
 #git submodule add https://github.com/bmbrands/theme_bootstrap.git theme/bootstrap
 git submodule add https://github.com/betollaque/moodle-theme_moodle2tablet.git theme/moodle2tablet
 git submodule add https://github.com/betollaque/moodle-theme_moodle2mobile.git theme/moodle2mobile
-git submodule add https://github.com/nrobbins/moodle_format_days.git course/days
+git submodule add https://github.com/nrobbins/moodle_format_days.git course/format/days
 git submodule add https://github.com/piersharding/moodle-tool_uploadcourse.git admin/tool/uploadcourse
 git submodule add https://github.com/piersharding/moodle-tool_uploadcoursecategory.git admin/tool/uploadcoursecategory
-
+git submodule add https://github.com/danmarsden/moodle-mod_attendance.git mod/attendance
 
 ### Deploy on production evergreen22
-  git clone -b MOODLE_24_STABLE git@github.com:eriko/moodle.git html.new
-  #Move plugins to the correct branches
-  cd html.new
-  git submodule init
-  git submodule update
-  cd ..
-  cp html/config.php html.new/config.php
-  #Remove trailing ?> at the end of config.php
-  cd html.new/enrol/imsenterprise2/
-  git checkout master
-  cd ../../
-  cd mod/attforblock
-  git checkout MDL_24
-  cd ../../
-  cd mod/scheduler
-  git checkout MOODLE_23_STABLE
-  cd ../../
-  cd theme/bootstrap
-  git checkout moodle_24
-  cd ../../
+
+ git clone -b MOODLE_25_STABLE git@github.com:eriko/moodle.git html.new
+ cp html/config.php html.new/config.php
+ cd html.new/
+ git submodule init
+ git submodule update
+ cd mod/attendance
+ git checkout master
+ git pull
+ cd ..
+ cd ..
+ cd mod/scheduler
+ git checkout MOODLE_25_STABLE
+ git pull
+ cd ..
+ cd ..
+ cd blocks/quickmail
+ git checkout master
+ git pull
+ cd ..
+ cd ..
+ cd blocks/attendance/
+ git checkout master
+ git pull
+ cd ..
+ cd ..
+ cd ..
+
+ mv html html.old && mv html.new html
+ cd html
+ /usr/local/zend/bin/php-cli  admin/cli/upgrade.php
+
+
+
   cd admin/tool/uploadcourse
   git checkout master
   cd ../uploadcoursecategory
