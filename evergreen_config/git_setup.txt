@@ -10,9 +10,9 @@ or
  git branch --set-upstream MOODLE_24_STABLE upstream/MOODLE_24_STABLE
 
 #get updates from upstream
-git checkout MOODLE_24_STABLE
+git checkout MOODLE_25_STABLE
 git fetch upstream
-git merge upstream/MOODLE_24_STABLE
+git merge upstream/MOODLE_25_STABLE
 
 #push updates to origin
 git push origin
@@ -38,9 +38,6 @@ git submodule add https://github.com/danmarsden/moodle-mod_attendance.git mod/at
  cd html.new/
  git submodule init
  git submodule update
- cd mod/attendance
- git checkout master
- git pull
  cd ..
  cd ..
  cd mod/scheduler
@@ -53,9 +50,17 @@ git submodule add https://github.com/danmarsden/moodle-mod_attendance.git mod/at
  git pull
  cd ..
  cd ..
- cd blocks/attendance/
- git checkout master
+ cd mod/attendance/
+ git checkout MOODLE_24-26_STABLE
  git pull
+  cd admin/tool/uploadcourse
+   git checkout master
+   cd ../uploadcoursecategory
+   git checkout master
+ cd ..
+ cd ..
+ cd enrol/imsenterprise2
+ git checkout master
  cd ..
  cd ..
  cd ..
@@ -65,14 +70,6 @@ git submodule add https://github.com/danmarsden/moodle-mod_attendance.git mod/at
  /usr/local/zend/bin/php-cli  admin/cli/upgrade.php
 
 
-
-  cd admin/tool/uploadcourse
-  git checkout master
-  cd ../uploadcoursecategory
-  git checkout master
-  cd ../../../
-  #cp html/enrol/imsenterprise2/version.php html.new/enrol/imsenterprise2/
-  mv html html.old && mv html.new html
 
 
 
