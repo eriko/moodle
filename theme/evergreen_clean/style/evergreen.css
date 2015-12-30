@@ -1,0 +1,22 @@
+.evergreen {
+	background-color:#64933A;
+	padding:3px 0 3px 30px;
+	margin: 0 auto;
+    max-width: 1680px;
+	border-bottom:1px solid #D4D4D4;
+}
+
+
+@media print {
+	nav, footer, div.evergreen, #page-navbar, #block-region-side-pre, #block-region-side-post{display:none;}
+	a:after {display: none;}
+	@page {	margin: 2cm .5cm;}
+	body {
+	font: 12pt Georgia, "Times New Roman", Times, serif;
+	line-height: 1.3;
+	}
+	#region-main {width:100%;} /*needed for 3 column layouts*/
+	.empty-region-side-post.used-region-side-pre #region-main.span8 {width:100%;} /*needed for 2 column layouts*/
+}
+
+
